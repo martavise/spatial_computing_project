@@ -2,13 +2,60 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>myapp</title>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+
+      #app {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      /* Optional debug UI */
+      #ui {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-family: sans-serif;
+      }
+
+      #rotationSlider {
+        width: 200px;
+      }
+    </style>
   </head>
+
   <body>
     <div id="app"></div>
+
+    <!-- UI layer (only for debugging / dev tools) -->
+    <div id="ui">
+      <input id="rotationSlider" type="range" min="0" max="360" value="0" />
+      <button id="openBtn" style="
+        position: absolute;
+        display: none;
+        padding: 10px 16px;
+        background: black;
+        color: white;
+        border: none;
+        cursor: pointer;
+      ">
+        Open Lid
+      </button>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
-    <input id="rotationSlider" type="range" min="0" max="360" value="0" />
   </body>
 </html>
