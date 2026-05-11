@@ -40,22 +40,32 @@
   <body>
     <div id="app"></div>
 
-    <div id="ui">
-      <div>rotate the object</div>
-      <input id="rotationSlider" type="range" min="0" max="360" value="0" />
-      <button id="openBtn" style="
-        position: absolute;
-        display: none;
-        padding: 10px 16px;
-        background: black;
-        color: white;
-        border: none;
-        cursor: pointer;
-      ">
+    <!-- UI shown only during the demo -->
+    <div id="ui" >
+      
+      <button id="soundBtn">
+        🔊 Sound On
+      </button>
+
+      <button
+        id="openBtn"
+        style="
+          position: absolute;
+          display: none;
+          padding: 10px 16px;
+          background: black;
+          color: white;
+          border: none;
+          cursor: pointer;
+        "
+      >
         Open Lid
       </button>
     </div>
 
     <script type="module" src="/src/main.js"></script>
   </body>
+
+
+
 </html>

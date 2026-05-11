@@ -1,250 +1,365 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-export function initScene() {
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-  // three.js scene
+export function initScene(onBack) {
+
+  // ------------------------------------------------
+  // SCENE
+  // ------------------------------------------------
   const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xD1003B);
 
-
-  // perspective camera
+  // ------------------------------------------------
+  // CAMERA
+  // ------------------------------------------------
   const camera = new THREE.PerspectiveCamera(
-    75,
+    60,
     window.innerWidth / window.innerHeight,
     0.1,
     1000
   );
 
+  camera.position.set(0, 1, 5);
 
-  // renderer 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // ------------------------------------------------
+  // RENDERER
+  // ------------------------------------------------
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  document.body.appendChild(renderer.domElement);
+
+  document.getElementById('app')
+    .appendChild(renderer.domElement);
 
 
-  // mouse interaction (hovering)
-  let mouseX = 0;
-  let mouseY = 0;
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-  const button = document.getElementById("openBtn");
+  // ------------------------------------------------
+  // AUDIO
+  // ------------------------------------------------
 
-  let isHovering = false;
+  const listener = new THREE.AudioListener();
 
-  window.addEventListener('mousemove', (event) => {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  camera.add(listener);
 
-    mouseX = event.clientX;
-    mouseY = event.clientY;
+  const sound = new THREE.Audio(listener);
+
+  const audioLoader = new THREE.AudioLoader();
+
+  let soundPlaying = false;
+
+  audioLoader.load('/music/A2.wav', (buffer) => {
+
+    sound.setBuffer(buffer);
+
+    sound.setLoop(true);
+
+    sound.setVolume(0.5);
   });
 
+  const soundBtn = document.getElementById('soundBtn');
 
-  // lighting
-  
-  const topLight = new THREE.DirectionalLight(0xffffff, 2);
-  topLight.position.set(0, 5, 5);
-  scene.add(topLight);
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  soundBtn.addEventListener('click', () => {
+
+    if (!soundPlaying) {
+
+      sound.play();
+      soundPlaying = true;
+      soundBtn.innerText = '🔇 Sound Off';
+
+    } else {
+
+      sound.pause();
+      soundPlaying = false;
+      soundBtn.innerText = '🔊 Sound On';
+    }
+  });
+  // ------------------------------------------------
+  // BACK BUTTON
+  // ------------------------------------------------
+  const backButton =
+    document.createElement('button');
+
+  backButton.innerText = 'Back to Menu';
+
+  backButton.style.position = 'absolute';
+  backButton.style.top = '20px';
+  backButton.style.right = '20px';
+  backButton.style.zIndex = '1000';
+
+  document.body.appendChild(backButton);
+
+  // ------------------------------------------------
+  // ORBIT CONTROLS
+  // ------------------------------------------------
+  const controls = new OrbitControls(
+    camera,
+    renderer.domElement
+  );
+
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  // ------------------------------------------------
+  // LIGHTS
+  // ------------------------------------------------
+  const ambientLight =
+    new THREE.AmbientLight(0xffffff, 1.2);
+
   scene.add(ambientLight);
 
-  
-  // loading of 3d objects
+  const directionalLight =
+    new THREE.DirectionalLight(0xffffff, 2);
+
+  directionalLight.position.set(5, 5, 5);
+
+  scene.add(directionalLight);
+
+  // ------------------------------------------------
+  // GRID
+  // ------------------------------------------------
+  const grid = new THREE.GridHelper(10, 10);
+
+  scene.add(grid);
+
+  // ------------------------------------------------
+  // MODEL
+  // ------------------------------------------------
   const loader = new GLTFLoader();
-  const objLoader = new OBJLoader();
 
-  let lidClosed, lidOpen;
+  let model;
 
-  // for y rotation
-  const lidClosedPivot = new THREE.Group();
-  const lidOpenPivot = new THREE.Group();
+  // selectable meshes
+  const selectableMeshes = [];
 
-  // position for button spawn
-  let buttonAnchor = new THREE.Object3D();
+  loader.load(
+    '/models/fusion_reconstructions/open.glb',
 
+    (gltf) => {
 
-loader.load('/models/fusion_reconstructions/open.glb', (gltf) => {
+      model = gltf.scene;
 
-  lidOpen = gltf.scene;
+      scene.add(model);
 
-  scene.add(lidOpen);
+      // --------------------------------------------
+      // CENTER MODEL
+      // --------------------------------------------
+      const box =
+        new THREE.Box3().setFromObject(model);
 
-  // compute size
-  const box = new THREE.Box3().setFromObject(lidOpen);
+      const center =
+        box.getCenter(new THREE.Vector3());
 
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
+      const size =
+        box.getSize(new THREE.Vector3());
 
-  console.log('size:', size);
-  console.log('center:', center);
+      model.position.sub(center);
 
-  // center model at origin
-  lidOpen.position.sub(center);
+      // --------------------------------------------
+      // FIT CAMERA
+      // --------------------------------------------
+      const maxDim = Math.max(
+        size.x,
+        size.y,
+        size.z
+      );
 
-  // fit camera to object
-  const maxDim = Math.max(size.x, size.y, size.z);
+      camera.position.set(
+        0,
+        maxDim * 0.5,
+        maxDim * 2
+      );
 
-  // to mimik human pov the camera is above the object
-  camera.position.set(0, maxDim * 0.8, maxDim * 1.5);
-  camera.lookAt(0, maxDim * 0.2, 0);
+      controls.target.set(0, 0, 0);
 
+      // --------------------------------------------
+      // STORE SELECTABLE PARTS
+      // --------------------------------------------
+      model.traverse((child) => {
 
-  });
+        if (child.isMesh) {
 
-  /*
-  loader.load('/models/closed_cropped.glb', (gltf) => {
-    lidClosed = gltf.scene;
-    gltf.scene.position.set(0, 0, 0);
+          selectableMeshes.push(child);
 
-    lidClosed.traverse((child) => {
-      if (child.isMesh) {
-        child.material.transparent = true;
-        child.material.opacity = 0.6;
-      }
+          child.userData.originalMaterial =
+            child.material.clone();
+        }
+      });
+
+      console.log('Model loaded');
+    }
+  );
+
+  // ------------------------------------------------
+  // PART SELECTION
+  // ------------------------------------------------
+  const raycaster = new THREE.Raycaster();
+
+  const mouse = new THREE.Vector2();
+
+  let selectedObject = null;
+
+  window.addEventListener('click', onMouseClick);
+
+  function onMouseClick(event) {
+
+    mouse.x =
+      (event.clientX / window.innerWidth) * 2 - 1;
+
+    mouse.y =
+      -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects =
+      raycaster.intersectObjects(
+        selectableMeshes,
+        true
+      );
+
+    // reset materials
+    selectableMeshes.forEach((mesh) => {
+
+      mesh.visible = true;
+
+      mesh.material =
+        mesh.userData.originalMaterial;
     });
 
-    //attach anchor to lid
-    buttonAnchor.position.set(0, 0.5, 0);
-    lidClosed.add(buttonAnchor);
+    // clicked mesh
+    if (intersects.length > 0) {
 
-    // center pivot (WIP)
-    lidClosedPivot.add(lidClosed);
-    scene.add(lidClosedPivot);
+      selectedObject = intersects[0].object;
 
-    scene.add(lidClosed);
-  });
+      selectableMeshes.forEach((mesh) => {
 
-  loader.load('/models/open_cropped.glb', (gltf) => {
-    lidOpen = gltf.scene;
-    gltf.scene.position.set(0, 0, 0);
-    lidOpen.visible = false;
-      lidOpenPivot.add(lidOpen);
-      scene.add(lidOpenPivot);
-  });
+        if (mesh !== selectedObject) {
 
-objLoader.load('/models/fusion_reconstructions/Mellotron.obj', (object)){
-  scene.add(object);
-}
-    */
+          mesh.visible = false;
+        }
+      });
 
+      selectedObject.material =
+        new THREE.MeshStandardMaterial({
+          color: 0xff4444
+        });
 
-  /*
-  zoom with + (zoom in) and - (zoom out) 
-  */
-  window.addEventListener('keydown', (e) => {
+      console.log(
+        'Selected:',
+        selectedObject.name
+      );
+    }
+  }
+
+  // ------------------------------------------------
+  // KEYBOARD
+  // ------------------------------------------------
+  window.addEventListener('keydown', onKeyDown);
+
+  function onKeyDown(e) {
+
+    // reset view
+    if (e.key === 'Escape') {
+
+      selectableMeshes.forEach((mesh) => {
+
+        mesh.visible = true;
+
+        mesh.material =
+          mesh.userData.originalMaterial;
+      });
+
+      selectedObject = null;
+    }
+
     // zoom in
-    if (e.key === '+'
-        || e.key === '='
-        || e.key === 'Add') {
+    if (
+      e.key === '+' ||
+      e.key === '=' ||
+      e.key === 'Add'
+    ) {
 
       camera.position.z -= 0.5;
     }
+
     // zoom out
-    if (e.key === '-'
-        || e.key === '_'
-        || e.key === 'Subtract') {
+    if (
+      e.key === '-' ||
+      e.key === '_' ||
+      e.key === 'Subtract'
+    ) {
 
       camera.position.z += 0.5;
     }
-  });
+  }
 
-  // rotation 
-  const slider = document.getElementById('rotationSlider');
+  // ------------------------------------------------
+  // RESIZE
+  // ------------------------------------------------
+  window.addEventListener('resize', onResize);
 
-  slider.addEventListener('input', (e) => {
-    const angle = THREE.MathUtils.degToRad(e.target.value);
+  function onResize() {
 
-    if (lidClosed && lidClosed.visible) {
-      lidClosed.rotation.y = angle;
-    }
+    camera.aspect =
+      window.innerWidth / window.innerHeight;
 
-    if (lidOpen && lidOpen.visible) {
-      lidOpen.rotation.y = angle;
-    }
-  });
+    camera.updateProjectionMatrix();
 
+    renderer.setSize(
+      window.innerWidth,
+      window.innerHeight
+    );
+  }
 
-
-
-  const tempV = new THREE.Vector3();
-
+  // ------------------------------------------------
+  // ANIMATION
+  // ------------------------------------------------
+  let animationId;
 
   function animate() {
-    requestAnimationFrame(animate);
 
-    if (lidClosed) {
-      raycaster.setFromCamera(mouse, camera);
+    animationId =
+      requestAnimationFrame(animate);
 
-      const intersects = raycaster.intersectObject(lidClosed, true);
-      if ( isHovering) {
-        console.log("inside object")
-
-        // get world position of anchor
-        tempV.setFromMatrixPosition(buttonAnchor.matrixWorld);
-        tempV.project(camera);
-
-        const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-tempV.y * 0.5 + 0.5) * window.innerHeight;
-
-        button.style.left = `${x}px`;
-        button.style.top = `${y}px`;
-      }
-      if (intersects.length > 0) {
-        if (!isHovering) {
-          isHovering = true;
-
-          // Make more opaque
-          lidClosed.traverse((child) => {
-            if (child.isMesh) {
-              child.material.opacity = 1.0;
-            }
-          });
-
-          // Show button near mouse
-          button.style.display = "block";
-        }
-
-      } else {
-        if (isHovering) {
-          isHovering = false;
-
-          // Back to transparent
-          lidClosed.traverse((child) => {
-            if (child.isMesh) {
-              child.material.opacity = 0.6;
-            }
-          });
-
-          button.style.display = "none";
-        }
-      }
-    }
+    controls.update();
 
     renderer.render(scene, camera);
-  }  
+  }
 
   animate();
 
-  button.addEventListener('click', () => {
-    if (lidClosed && lidOpen) {
-        lidClosed.visible = !lidClosed.visible;
-        lidOpen.visible = !lidOpen.visible;
-      
-      button.style.display = "none";
-    }
-  });
+  // ------------------------------------------------
+  // CLEANUP + BACK
+  // ------------------------------------------------
+  backButton.addEventListener('click', () => {
 
-  /*
-  pass from one model to the other by pressing "o"
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'o') {
-      if (lidClosed && lidOpen) {
-        lidClosed.visible = !lidClosed.visible;
-        lidOpen.visible = !lidOpen.visible;
-      }
-    }
-  });
-  */
+    cancelAnimationFrame(animationId);
 
+    window.removeEventListener(
+      'click',
+      onMouseClick
+    );
+
+    window.removeEventListener(
+      'keydown',
+      onKeyDown
+    );
+
+    window.removeEventListener(
+      'resize',
+      onResize
+    );
+
+    controls.dispose();
+
+    renderer.dispose();
+
+    renderer.domElement.remove();
+
+    backButton.remove();
+
+    onBack();
+  });
 }
