@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 export function initScene() {
 
   // three.js scene
@@ -14,6 +14,7 @@ export function initScene() {
     0.1,
     1000
   );
+
 
   // renderer 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -43,8 +44,7 @@ export function initScene() {
   // lighting
   
   const topLight = new THREE.DirectionalLight(0xffffff, 2);
-  topLight.position.set(0, 5, 0);
-  topLight.position.set(0, 0, 0); // from above
+  topLight.position.set(0, 5, 5);
   scene.add(topLight);
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
@@ -52,14 +52,50 @@ export function initScene() {
   
   // loading of 3d objects
   const loader = new GLTFLoader();
+  const objLoader = new OBJLoader();
 
   let lidClosed, lidOpen;
+
+  // for y rotation
+  const lidClosedPivot = new THREE.Group();
+  const lidOpenPivot = new THREE.Group();
 
   // position for button spawn
   let buttonAnchor = new THREE.Object3D();
 
+
+loader.load('/models/fusion_reconstructions/open.glb', (gltf) => {
+
+  lidOpen = gltf.scene;
+
+  scene.add(lidOpen);
+
+  // compute size
+  const box = new THREE.Box3().setFromObject(lidOpen);
+
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+
+  console.log('size:', size);
+  console.log('center:', center);
+
+  // center model at origin
+  lidOpen.position.sub(center);
+
+  // fit camera to object
+  const maxDim = Math.max(size.x, size.y, size.z);
+
+  // to mimik human pov the camera is above the object
+  camera.position.set(0, maxDim * 0.8, maxDim * 1.5);
+  camera.lookAt(0, maxDim * 0.2, 0);
+
+
+  });
+
+  /*
   loader.load('/models/closed_cropped.glb', (gltf) => {
     lidClosed = gltf.scene;
+    gltf.scene.position.set(0, 0, 0);
 
     lidClosed.traverse((child) => {
       if (child.isMesh) {
@@ -72,16 +108,46 @@ export function initScene() {
     buttonAnchor.position.set(0, 0.5, 0);
     lidClosed.add(buttonAnchor);
 
+    // center pivot (WIP)
+    lidClosedPivot.add(lidClosed);
+    scene.add(lidClosedPivot);
+
     scene.add(lidClosed);
   });
 
   loader.load('/models/open_cropped.glb', (gltf) => {
     lidOpen = gltf.scene;
+    gltf.scene.position.set(0, 0, 0);
     lidOpen.visible = false;
-    scene.add(lidOpen);
+      lidOpenPivot.add(lidOpen);
+      scene.add(lidOpenPivot);
   });
 
-  camera.position.z = 3;
+objLoader.load('/models/fusion_reconstructions/Mellotron.obj', (object)){
+  scene.add(object);
+}
+    */
+
+
+  /*
+  zoom with + (zoom in) and - (zoom out) 
+  */
+  window.addEventListener('keydown', (e) => {
+    // zoom in
+    if (e.key === '+'
+        || e.key === '='
+        || e.key === 'Add') {
+
+      camera.position.z -= 0.5;
+    }
+    // zoom out
+    if (e.key === '-'
+        || e.key === '_'
+        || e.key === 'Subtract') {
+
+      camera.position.z += 0.5;
+    }
+  });
 
   // rotation 
   const slider = document.getElementById('rotationSlider');
@@ -102,7 +168,6 @@ export function initScene() {
 
 
   const tempV = new THREE.Vector3();
-
 
 
   function animate() {
@@ -170,6 +235,8 @@ export function initScene() {
     }
   });
 
+  /*
+  pass from one model to the other by pressing "o"
   window.addEventListener('keydown', (e) => {
     if (e.key === 'o') {
       if (lidClosed && lidOpen) {
@@ -178,5 +245,6 @@ export function initScene() {
       }
     }
   });
+  */
 
 }
