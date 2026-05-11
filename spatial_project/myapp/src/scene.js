@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 export function initScene(onBack) {
 
   // ------------------------------------------------
-  // SCENE
+  // THREE.JS SCENE
   // ------------------------------------------------
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xD1003B);
@@ -76,6 +76,7 @@ export function initScene(onBack) {
       soundBtn.innerText = '🔊 Sound On';
     }
   });
+
   // ------------------------------------------------
   // BACK BUTTON
   // ------------------------------------------------
@@ -90,6 +91,91 @@ export function initScene(onBack) {
   backButton.style.zIndex = '1000';
 
   document.body.appendChild(backButton);
+
+  // ------------------------------------------------
+  // IMAGE POPUP BUTTON + MODAL
+  // ------------------------------------------------
+
+  // Button
+  const imageBtn = document.createElement('button');
+  imageBtn.innerText = 'Show Tape Image';
+
+  imageBtn.style.position = 'absolute';
+  imageBtn.style.top = '60px';
+  imageBtn.style.right = '20px';
+  imageBtn.style.zIndex = '1000';
+
+  document.body.appendChild(imageBtn);
+
+  // Modal overlay
+  // Modal overlay
+  const modal = document.createElement('div');
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.width = '100vw';
+  modal.style.height = '100vh';
+  modal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+  modal.style.display = 'none';
+  modal.style.alignItems = 'center';
+  modal.style.justifyContent = 'center';
+  modal.style.zIndex = '2000';
+
+  // Container (split layout)
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.gap = '20px';
+  container.style.background = '#fff';
+  container.style.padding = '20px';
+  container.style.borderRadius = '12px';
+  container.style.maxWidth = '90vw';
+  container.style.maxHeight = '80vh';
+  container.style.overflow = 'hidden';
+
+  // IMAGE SIDE
+  const img = document.createElement('img');
+  img.src = '/figures/magnetic_tape.webp';
+  img.style.width = '400px';
+  img.style.height = 'auto';
+  img.style.objectFit = 'contain';
+  img.style.borderRadius = '8px';
+
+  // TEXT SIDE
+  const text = document.createElement('div');
+  text.style.width = '300px';
+  text.style.overflowY = 'auto';
+  text.style.fontFamily = 'Arial, sans-serif';
+  text.style.color = '#222';
+
+  text.innerHTML = `
+    <h2>Magnetic Tape</h2>
+    <p>
+      Magnetic tape is a data storage medium that records information magnetically on a thin plastic strip.
+    </p>
+    <p>
+      It was widely used in audio recording, video storage, and early computer backup systems.
+    </p>
+    <p>
+      Each key of the Mellotron can have up to 3 magnetic tapes containing a 15s sample registration
+    </p>
+  `;
+
+  // Assemble modal
+  container.appendChild(img);
+  container.appendChild(text);
+  modal.appendChild(container);
+  document.body.appendChild(modal);
+
+
+  imageBtn.addEventListener('click', () => {
+    modal.style.display = 'flex';
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
 
   // ------------------------------------------------
   // ORBIT CONTROLS
@@ -135,7 +221,7 @@ export function initScene(onBack) {
   const selectableMeshes = [];
 
   loader.load(
-    '/models/fusion_reconstructions/open.glb',
+    '/models/fusion_reconstructions/quit.glb',
 
     (gltf) => {
 
@@ -187,10 +273,12 @@ export function initScene(onBack) {
             child.material.clone();
         }
       });
-
+      console.log("Selectable meshes:", selectableMeshes.length);
       console.log('Model loaded');
     }
   );
+
+  window.addEventListener('click', onMouseClick);
 
   // ------------------------------------------------
   // PART SELECTION
@@ -199,62 +287,36 @@ export function initScene(onBack) {
 
   const mouse = new THREE.Vector2();
 
-  let selectedObject = null;
 
-  window.addEventListener('click', onMouseClick);
+  let selectedObject = null;
 
   function onMouseClick(event) {
 
-    mouse.x =
-      (event.clientX / window.innerWidth) * 2 - 1;
-
-    mouse.y =
-      -(event.clientY / window.innerHeight) * 2 + 1;
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
 
-    const intersects =
-      raycaster.intersectObjects(
-        selectableMeshes,
-        true
-      );
+    const intersects = raycaster.intersectObjects(selectableMeshes, true);
 
-    // reset materials
-    selectableMeshes.forEach((mesh) => {
+    if (selectedObject) {
+      selectedObject.material.emissive.set(0x000000);
+    }
 
-      mesh.visible = true;
-
-      mesh.material =
-        mesh.userData.originalMaterial;
-    });
-
-    // clicked mesh
     if (intersects.length > 0) {
-
       selectedObject = intersects[0].object;
 
-      selectableMeshes.forEach((mesh) => {
+      selectedObject.material.emissive.set(0x27f5b0);
+      selectedObject.material.emissiveIntensity = 0.5;
 
-        if (mesh !== selectedObject) {
-
-          mesh.visible = false;
-        }
-      });
-
-      selectedObject.material =
-        new THREE.MeshStandardMaterial({
-          color: 0xff4444
-        });
-
-      console.log(
-        'Selected:',
-        selectedObject.name
-      );
+      console.log("Selected:", selectedObject.name);
+    } else {
+      selectedObject = null;
     }
   }
 
   // ------------------------------------------------
-  // KEYBOARD
+  // KEYBOARD INTERACTIONS
   // ------------------------------------------------
   window.addEventListener('keydown', onKeyDown);
 
