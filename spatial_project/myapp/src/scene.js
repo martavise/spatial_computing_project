@@ -3,8 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export function initScene(onBack) {
-
-  // meshes unues in the selection
+  // meshes unused in the selection
   const NON_SELECTABLE = [
     'cover',
     'structure',
@@ -46,7 +45,6 @@ export function initScene(onBack) {
   // ------------------------------------------------
   // AUDIO
   // ------------------------------------------------
-
   const listener = new THREE.AudioListener();
 
   camera.add(listener);
@@ -274,11 +272,11 @@ export function initScene(onBack) {
 
       model = gltf.scene;
 
-      scene.add(model);
+      scene.add(model)  // add model to scene
 
-      // --------------------------------------------
-      // CENTER MODEL
-      // --------------------------------------------
+      model.scale.set(2, 2, 2);  // make model bigger
+
+      // compute bounding box for camera
       const box =
         new THREE.Box3().setFromObject(model);
 
@@ -288,11 +286,12 @@ export function initScene(onBack) {
       const size =
         box.getSize(new THREE.Vector3());
 
-      model.position.sub(center);
+      model.position.sub(center); // center model to camera
 
       // place bottom of model on ground
-      model.position.y += size.y / 2;
+      model.position.y = -box.min.y;
 
+  
       // --------------------------------------------
       // FIT CAMERA
       // --------------------------------------------
@@ -354,31 +353,48 @@ export function initScene(onBack) {
   window.addEventListener('click', onMouseClick);
 
   // ------------------------------------------------
-  // PART SELECTION
+  // PART SELECTION + raycast (laser pointer)
   // ------------------------------------------------
   const raycaster = new THREE.Raycaster();
 
   const mouse = new THREE.Vector2();
+  
+  ///// LASER POINTER /////
 
-  // visible ray line
-  let rayLine;
+  // laser geometry
+  const laserGeometry = new THREE.CylinderGeometry(
+    0.01, // top radius
+    0.01, // bottom radius
+    1,    // height
+    8
+  );
 
-  const rayMaterial = new THREE.LineBasicMaterial({
-    color: 0x00ff00
+  const laserMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.9
   });
 
-  const rayGeometry = new THREE.BufferGeometry();
+  const laser = new THREE.Mesh(
+    laserGeometry,
+    laserMaterial
+  );
 
-  const rayPoints = [
-    new THREE.Vector3(),
-    new THREE.Vector3()
-  ];
+  scene.add(laser);
 
-  rayGeometry.setFromPoints(rayPoints);
+  // small glowing dot at hit point
+  const dotGeometry = new THREE.SphereGeometry(0.03, 16, 16);
 
-  rayLine = new THREE.Line(rayGeometry, rayMaterial);
+  const dotMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000
+  });
 
-scene.add(rayLine);
+  const laserDot = new THREE.Mesh(
+    dotGeometry,
+    dotMaterial
+  );
+
+  scene.add(laserDot);
 
 
   let selectedObject = null;
@@ -496,16 +512,54 @@ scene.add(rayLine);
     // update ray visual
     raycaster.setFromCamera(mouse, camera);
 
-    const origin = raycaster.ray.origin;
-    const direction = raycaster.ray.direction;
+    // laser pointer logic
+    const origin = raycaster.ray.origin.clone();
 
-    rayPoints[0].copy(origin);
+    const direction = raycaster.ray.direction.clone();
 
-    rayPoints[1].copy(
-      origin.clone().add(direction.clone().multiplyScalar(100))
+    // intersections with model
+    const intersects = raycaster.intersectObjects(
+      selectableMeshes,
+      true
     );
 
-    rayGeometry.setFromPoints(rayPoints);
+    let targetPoint;
+
+    // if ray hits object
+    if (intersects.length > 0) {
+
+      targetPoint = intersects[0].point;
+
+      laserDot.visible = true;
+      laserDot.position.copy(targetPoint);
+
+    } else {
+
+      // extend laser forward
+      targetPoint = origin.clone().add(
+        direction.multiplyScalar(20)
+      );
+
+      laserDot.visible = false;
+    }
+
+    // midpoint
+    const midpoint = origin.clone().lerp(targetPoint, 0.5);
+
+    // laser length
+    const distance = origin.distanceTo(targetPoint);
+
+    // position laser
+    laser.position.copy(midpoint);
+
+    // scale to length
+    laser.scale.set(1, distance, 1);
+
+    // orient laser
+    laser.lookAt(targetPoint);
+
+    // cylinder default axis correction
+    laser.rotateX(Math.PI / 2);
 
 
     renderer.render(scene, camera);
