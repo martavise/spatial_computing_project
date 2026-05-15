@@ -4,6 +4,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export function initScene(onBack) {
 
+  // meshes unues in the selection
+  const NON_SELECTABLE = [
+    'cover',
+    'structure',
+    'strucute'
+  ];
+
   // ------------------------------------------------
   // THREE.JS SCENE
   // ------------------------------------------------
@@ -108,7 +115,6 @@ export function initScene(onBack) {
   document.body.appendChild(imageBtn);
 
   // Modal overlay
-  // Modal overlay
   const modal = document.createElement('div');
   modal.style.position = 'fixed';
   modal.style.top = '0';
@@ -204,11 +210,52 @@ export function initScene(onBack) {
   scene.add(directionalLight);
 
   // ------------------------------------------------
-  // GRID
+  // GROUND
   // ------------------------------------------------
-  const grid = new THREE.GridHelper(10, 10);
 
-  scene.add(grid);
+  // Ground plane
+  const groundGeometry = new THREE.PlaneGeometry(50, 50);
+
+  // ------------------------------------------------
+  // PARQUET TEXTURE
+  // ------------------------------------------------
+  const textureLoader = new THREE.TextureLoader();
+
+  const woodTexture = textureLoader.load(
+    '/textures/parquet.jpg'
+  );
+
+  // repeat texture
+  woodTexture.wrapS = THREE.RepeatWrapping;
+  woodTexture.wrapT = THREE.RepeatWrapping;
+
+  woodTexture.repeat.set(8, 8);
+
+  woodTexture.colorSpace = THREE.SRGBColorSpace;
+
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    map: woodTexture,
+    roughness: 0.8,
+    metalness: 0
+  });
+
+  const ground = new THREE.Mesh(
+    groundGeometry,
+    groundMaterial
+  );
+
+  // rotate plane to horizontal
+  ground.rotation.x = -Math.PI / 2;
+
+  // slightly below model/grid
+  ground.position.y = 0;
+
+  // receive shadows/light nicely
+  ground.receiveShadow = true;
+
+  scene.add(ground);
+
+
 
   // ------------------------------------------------
   // MODEL
@@ -221,7 +268,7 @@ export function initScene(onBack) {
   const selectableMeshes = [];
 
   loader.load(
-    '/models/fusion_reconstructions/quit.glb',
+    '/models/fusion_reconstructions/sectioned.glb',
 
     (gltf) => {
 
@@ -242,6 +289,9 @@ export function initScene(onBack) {
         box.getSize(new THREE.Vector3());
 
       model.position.sub(center);
+
+      // place bottom of model on ground
+      model.position.y += size.y / 2;
 
       // --------------------------------------------
       // FIT CAMERA
@@ -266,11 +316,34 @@ export function initScene(onBack) {
       model.traverse((child) => {
 
         if (child.isMesh) {
+          const meshName = child.name.toLowerCase();
+           // skip non selectable meshes
+          if (
+            NON_SELECTABLE.some(name =>
+              meshName.includes(name)
+            )
+          ) {
+            return;
+          }
+            // ignore meshes containing "solid"
+          if (meshName.includes('solid')) {
+            return;
+          }
 
           selectableMeshes.push(child);
 
-          child.userData.originalMaterial =
-            child.material.clone();
+          child.material = child.material.clone();
+
+          child.userData.originalColor =
+            child.material.color.clone();
+
+          // FORCE WHITE MATERIAL LOOK
+          child.material.color = new THREE.Color(0xffffff);
+
+          child.material.metalness = 0;   // removes steel/metal look
+          child.material.roughness = 1;   // makes it matte/white plastic-ish
+
+          child.material.needsUpdate = true;
         }
       });
       console.log("Selectable meshes:", selectableMeshes.length);
@@ -287,6 +360,26 @@ export function initScene(onBack) {
 
   const mouse = new THREE.Vector2();
 
+  // visible ray line
+  let rayLine;
+
+  const rayMaterial = new THREE.LineBasicMaterial({
+    color: 0x00ff00
+  });
+
+  const rayGeometry = new THREE.BufferGeometry();
+
+  const rayPoints = [
+    new THREE.Vector3(),
+    new THREE.Vector3()
+  ];
+
+  rayGeometry.setFromPoints(rayPoints);
+
+  rayLine = new THREE.Line(rayGeometry, rayMaterial);
+
+scene.add(rayLine);
+
 
   let selectedObject = null;
 
@@ -299,18 +392,25 @@ export function initScene(onBack) {
 
     const intersects = raycaster.intersectObjects(selectableMeshes, true);
 
+
+    // restore previous selection
     if (selectedObject) {
-      selectedObject.material.emissive.set(0x000000);
+      selectedObject.material.color.copy(
+        selectedObject.userData.originalColor
+      );
     }
 
     if (intersects.length > 0) {
+
       selectedObject = intersects[0].object;
 
-      selectedObject.material.emissive.set(0x27f5b0);
-      selectedObject.material.emissiveIntensity = 0.5;
+      // darken selected mesh
+      selectedObject.material.color.set(0x444444);
 
       console.log("Selected:", selectedObject.name);
+
     } else {
+
       selectedObject = null;
     }
   }
@@ -325,16 +425,21 @@ export function initScene(onBack) {
     // reset view
     if (e.key === 'Escape') {
 
-      selectableMeshes.forEach((mesh) => {
+    // restore all mesh colors
+    selectableMeshes.forEach((mesh) => {
 
-        mesh.visible = true;
+      mesh.visible = true;
 
-        mesh.material =
-          mesh.userData.originalMaterial;
-      });
+      mesh.material.color.set(0xffffff);
 
-      selectedObject = null;
-    }
+      mesh.material.emissive.set(0x000000);
+
+      mesh.material.emissiveIntensity = 0;
+    });
+
+    // clear selected object
+    selectedObject = null;
+  }
 
     // zoom in
     if (
@@ -387,6 +492,21 @@ export function initScene(onBack) {
 
     controls.update();
 
+     // update ray visual
+    raycaster.setFromCamera(mouse, camera);
+
+    const origin = raycaster.ray.origin;
+    const direction = raycaster.ray.direction;
+
+    rayPoints[0].copy(origin);
+
+    rayPoints[1].copy(
+      origin.clone().add(direction.clone().multiplyScalar(100))
+    );
+
+    rayGeometry.setFromPoints(rayPoints);
+
+
     renderer.render(scene, camera);
   }
 
@@ -424,4 +544,28 @@ export function initScene(onBack) {
 
     onBack();
   });
+
+
+  window.addEventListener('mousemove', onMouseMove);
+
+  function onMouseMove(event) {
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  }
 }
+
+
+
+/*
+TODO: 
+- limita camera view 
+- metti textures 
+- aggiungi bottoni a parti specifiche 
+- aggiungi literature reviews (onedrive folder) al main menu
+- raycast visibile
+- limita elementi selezionabili
+- prepara testo informativo
+- vedi se aggiungere pitch roll
+*/

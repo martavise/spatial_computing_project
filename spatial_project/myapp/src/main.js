@@ -10,7 +10,7 @@ function renderLandingPage() {
   app.innerHTML = `
     <div id="landingPage">
 
-      <h1>Melletron Simulation</h1>
+      <h1>Mellotron Simulation</h1>
 
       <div class="menuButtons">
 
