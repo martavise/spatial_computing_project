@@ -43,6 +43,123 @@ export function initScene(onBack) {
 
 
   // ------------------------------------------------
+  // LABEL OVERLAY SYSTEM
+  // ------------------------------------------------
+  const labelContainer = document.createElement('div');
+  labelContainer.style.position = 'absolute';
+  labelContainer.style.top = '0';
+  labelContainer.style.left = '0';
+  labelContainer.style.width = '100%';
+  labelContainer.style.height = '100%';
+  labelContainer.style.pointerEvents = 'none'; // non blocca gli eventi mouse
+  labelContainer.style.zIndex = '10';
+  document.getElementById('app').appendChild(labelContainer);
+
+  // SVG per le linee tratteggiate
+  const labelSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  labelSVG.style.position = 'absolute';
+  labelSVG.style.top = '0';
+  labelSVG.style.left = '0';
+  labelSVG.style.width = '100%';
+  labelSVG.style.height = '100%';
+  labelSVG.style.pointerEvents = 'none';
+  labelContainer.appendChild(labelSVG);
+
+  // funzione labels
+  function toScreenPosition(obj, camera) {
+    const vector = new THREE.Vector3();
+    
+    // prendi il centro della mesh
+    const box = new THREE.Box3().setFromObject(obj);
+    box.getCenter(vector);
+    
+    vector.project(camera);
+    
+    return {
+      x: (vector.x * 0.5 + 0.5) * window.innerWidth,
+      y: (-vector.y * 0.5 + 0.5) * window.innerHeight,
+      visible: vector.z < 1 // davanti alla camera
+    };
+  }
+
+  const labelDefinitions = [
+    {
+      id: 'label-lid',
+      getMesh: () => lidMesh,
+      text: 'see inside',
+      icon: '',
+      condition: () => lidMesh && lidMesh.visible, // mostra solo quando il lid è visibile
+      offset: { x: 120, y: -60 } // offset in px rispetto al punto proiettato
+    },
+    {
+      id: 'label-keys',
+      getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('key')),
+      text: 'Interactive keyboard',
+      icon: '',
+      condition: () => true,
+      offset: { x: 130, y: 40 }
+    },
+
+  ];
+
+  // Crea gli elementi DOM per ogni label
+  const labelElements = {};
+
+  labelDefinitions.forEach(def => {
+    // Div etichetta
+    const div = document.createElement('div');
+    div.id = def.id;
+    div.style.position = 'absolute';
+    div.style.background = 'rgba(255,255,255,0.92)';
+    div.style.color = '#111';
+    div.style.padding = '6px 12px';
+    div.style.borderRadius = '6px';
+    div.style.fontSize = '13px';
+    div.style.fontFamily = 'Arial, sans-serif';
+    div.style.fontWeight = '500';
+    div.style.whiteSpace = 'nowrap';
+    div.style.boxShadow = '0 2px 8px rgba(0,0,0,0.18)';
+    div.style.border = '1px solid rgba(0,0,0,0.08)';
+    div.style.pointerEvents = 'none';
+    div.style.transition = 'opacity 0.3s';
+    div.style.opacity = '0';
+    div.innerHTML = `${def.icon} ${def.text}`;
+    labelContainer.appendChild(div);
+
+    // Linea SVG tratteggiata
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('stroke', 'white');
+    line.setAttribute('stroke-width', '1.5');
+    line.setAttribute('stroke-dasharray', '5,4');
+    line.style.opacity = '0';
+    line.style.transition = 'opacity 0.3s';
+    // animazione dashoffset per effetto "marching ants"
+    line.style.animation = 'dash 1s linear infinite';
+    labelSVG.appendChild(line);
+
+    // Piccolo dot sul punto 3D
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('r', '4');
+    dot.setAttribute('fill', 'white');
+    dot.setAttribute('stroke', 'rgba(0,0,0,0.2)');
+    dot.setAttribute('stroke-width', '1');
+    dot.style.opacity = '0';
+    dot.style.transition = 'opacity 0.3s';
+    labelSVG.appendChild(dot);
+
+    labelElements[def.id] = { div, line, dot };
+  });
+
+  // Aggiungi l'animazione CSS per le linee
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    @keyframes dash {
+      to { stroke-dashoffset: -18; }
+    }
+  `;
+  document.head.appendChild(styleEl);
+
+  // ------------------------------------------------
   // AUDIO
   // ------------------------------------------------
   const listener = new THREE.AudioListener();
@@ -265,6 +382,10 @@ export function initScene(onBack) {
   // selectable meshes
   const selectableMeshes = [];
 
+  let lidMesh = null;
+  let keysGroupCenter = new THREE.Vector3();
+
+
   loader.load(
     '/models/fusion_reconstructions/renamed_sections.glb',
 
@@ -358,6 +479,7 @@ export function initScene(onBack) {
     );
   }
 
+
   // --------------------------------------------
   // MODEL TRAVERSE
   // --------------------------------------------
@@ -371,6 +493,13 @@ export function initScene(onBack) {
     // ignore helper solids
     if (meshName.includes('solid')) {
       return;
+    }
+    if (meshName.includes('lid')) {
+      lidMesh = child;
+    }
+
+    if (meshName.includes('key')) {
+      selectableMeshes.push(child);
     }
 
     // --------------------------------------------
@@ -558,6 +687,12 @@ export function initScene(onBack) {
     selectableMeshes.length
   );
 
+  const keyBox = new THREE.Box3();
+
+  selectableMeshes.forEach(m => keyBox.expandByObject(m));
+
+  keyBox.getCenter(keysGroupCenter);
+
   window.addEventListener('click', onMouseClick);
 
   // ------------------------------------------------
@@ -628,7 +763,7 @@ export function initScene(onBack) {
 
       selectedObject = intersects[0].object;
 
-       // lid → hide
+    // lid → hide it and set camera above, looking down
     if (
       selectedObject.name
         .toLowerCase()
@@ -636,6 +771,18 @@ export function initScene(onBack) {
     ) {
 
       selectedObject.visible = false;
+
+      // FORCE CAMERA POSE from above
+      camera.position.set(
+        0.0000028409055144181794,
+        2.8413612915298456,
+        -5.089054094735462e-8
+      );
+
+      controls.target.set(0, 0, 0);
+
+      // update controls so OrbitControls doesn't override
+      controls.update();
 
     } else {
 
@@ -650,6 +797,8 @@ export function initScene(onBack) {
       selectedObject = null;
     }
   }
+
+
 
   // ------------------------------------------------
   // KEYBOARD INTERACTIONS
@@ -728,6 +877,7 @@ export function initScene(onBack) {
 
     controls.update();
 
+
     controls.maxPolarAngle = (Math.PI / 2) - 0.04; // limits camera view to above floor level (had to adjusta little, because at PI/2, one could still see under the ground level)
     // update ray visual
     raycaster.setFromCamera(mouse, camera);
@@ -736,7 +886,7 @@ export function initScene(onBack) {
     const origin = raycaster.ray.origin.clone();
 
     const direction = raycaster.ray.direction.clone();
-
+ 
     // intersections with model
     const intersects = raycaster.intersectObjects(
       selectableMeshes,
@@ -781,6 +931,58 @@ export function initScene(onBack) {
     // cylinder default axis correction
     laser.rotateX(Math.PI / 2);
 
+    /* to check camera info
+    console.log(
+      'Camera position:',
+      camera.position,
+      'Camera rotation:',
+      camera.rotation
+    );
+    */
+
+    // Aggiorna label overlay
+    labelDefinitions.forEach(def => {
+      const el = labelElements[def.id];
+      const mesh = def.getMesh();
+
+      if (!mesh || !def.condition()) {
+        el.div.style.opacity = '0';
+        el.line.style.opacity = '0';
+        el.dot.style.opacity = '0';
+        return;
+      }
+
+      const screen = toScreenPosition(mesh, camera);
+
+      if (!screen.visible) {
+        el.div.style.opacity = '0';
+        el.line.style.opacity = '0';
+        el.dot.style.opacity = '0';
+        return;
+      }
+
+      const labelX = screen.x + def.offset.x;
+      const labelY = screen.y + def.offset.y;
+
+      el.div.style.left = `${labelX}px`;
+      el.div.style.top  = `${labelY}px`;
+      el.div.style.opacity = '1';
+
+      const divW = el.div.offsetWidth;
+      const divH = el.div.offsetHeight;
+      const anchorX = def.offset.x > 0 ? labelX : labelX + divW;
+      const anchorY = labelY + divH / 2;
+
+      el.line.setAttribute('x1', screen.x);
+      el.line.setAttribute('y1', screen.y);
+      el.line.setAttribute('x2', anchorX);
+      el.line.setAttribute('y2', anchorY);
+      el.line.style.opacity = '0.85';
+
+      el.dot.setAttribute('cx', screen.x);
+      el.dot.setAttribute('cy', screen.y);
+      el.dot.style.opacity = '1';
+    });
 
     renderer.render(scene, camera);
   }
@@ -816,6 +1018,8 @@ export function initScene(onBack) {
     renderer.domElement.remove();
 
     backButton.remove();
+    labelContainer.remove();
+    styleEl.remove();
 
     onBack();
   });
@@ -841,3 +1045,4 @@ TODO:
 - aggiungi literature reviews (onedrive folder) al main menu
 - prepara testo informativo
 */
+
