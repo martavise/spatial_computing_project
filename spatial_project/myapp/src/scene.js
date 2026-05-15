@@ -266,7 +266,7 @@ export function initScene(onBack) {
   const selectableMeshes = [];
 
   loader.load(
-    '/models/fusion_reconstructions/sectioned.glb',
+    '/models/fusion_reconstructions/renamed_sections.glb',
 
     (gltf) => {
 
@@ -309,45 +309,253 @@ export function initScene(onBack) {
 
       controls.target.set(0, 0, 0);
 
-      // --------------------------------------------
-      // STORE SELECTABLE PARTS
-      // --------------------------------------------
-      model.traverse((child) => {
+  // --------------------------------------------
+  // MATERIAL HELPERS
+  // --------------------------------------------
 
-        if (child.isMesh) {
-          const meshName = child.name.toLowerCase();
-           // skip non selectable meshes
-          if (
-            NON_SELECTABLE.some(name =>
-              meshName.includes(name)
-            )
-          ) {
-            return;
-          }
-            // ignore meshes containing "solid"
-          if (meshName.includes('solid')) {
-            return;
-          }
+  function applyMaterial(mesh, options = {}) {
 
-          selectableMeshes.push(child);
+    const {
+      color = 0xffffff,
+      metalness = 0,
+      roughness = 1,
+      transparent = false,
+      opacity = 1
+    } = options;
 
-          child.material = child.material.clone();
+    mesh.material = mesh.material.clone();
 
-          child.userData.originalColor =
-            child.material.color.clone();
+    mesh.material.color.set(color);
 
-          // FORCE WHITE MATERIAL LOOK
-          child.material.color = new THREE.Color(0xffffff);
+    mesh.material.metalness = metalness;
 
-          child.material.metalness = 0;   // removes steel/metal look
-          child.material.roughness = 1;   // makes it matte/white plastic-ish
+    mesh.material.roughness = roughness;
 
-          child.material.needsUpdate = true;
-        }
-      });
-      console.log("Selectable meshes:", selectableMeshes.length);
-      console.log('Model loaded');
+    mesh.material.transparent = transparent;
+
+    mesh.material.opacity = opacity;
+
+    mesh.material.needsUpdate = true;
+
+    mesh.userData.originalColor =
+      mesh.material.color.clone();
+  }
+
+  // --------------------------------------------
+  // SELECTABLE RULES
+  // --------------------------------------------
+
+  function isSelectable(meshName) {
+
+    return (
+      meshName.includes('lid') ||
+      meshName.includes('key') ||
+      meshName.includes('power') ||
+      meshName.includes('tone') ||
+      meshName.includes('volume') ||
+      meshName.includes('pitch') ||
+      meshName.includes('tape_select')
+    );
+  }
+
+  // --------------------------------------------
+  // MODEL TRAVERSE
+  // --------------------------------------------
+
+  model.traverse((child) => {
+
+    if (!child.isMesh) return;
+
+    const meshName = child.name.toLowerCase();
+
+    // ignore helper solids
+    if (meshName.includes('solid')) {
+      return;
     }
+
+    // --------------------------------------------
+    // SELECTABLE STORAGE
+    // --------------------------------------------
+
+    if (isSelectable(meshName)) {
+      selectableMeshes.push(child);
+    }
+
+    // --------------------------------------------
+    // NON SELECTABLE
+    // --------------------------------------------
+
+    // cables → black
+    if (meshName.includes('cable')) {
+
+      applyMaterial(child, {
+        color: 0x111111,
+        roughness: 0.95,
+        metalness: 0
+      });
+    }
+
+    // belt / cinghia → matte black
+    else if (meshName.includes('cinghia')) {
+
+      applyMaterial(child, {
+        color: 0x050505,
+        roughness: 1,
+        metalness: 0
+      });
+    }
+
+    // cover → white
+    else if (meshName.includes('cover')) {
+
+      applyMaterial(child, {
+        color: 0xf2f1df,
+        roughness: 0.9,
+        metalness: 0
+      });
+    }
+
+    // motherboard → metallic silver
+    else if (meshName.includes('motherboard')) {
+
+      applyMaterial(child, {
+        color: 0xbfc5cc,
+        metalness: 1,
+        roughness: 0.3
+      });
+    }
+
+    // pins → light blue
+    else if (meshName.includes('pin')) {
+
+      applyMaterial(child, {
+        color: 0x8fd3ff,
+        metalness: 0.2,
+        roughness: 0.5
+      });
+    }
+
+    // structure → metallic silver
+    else if (
+      meshName.includes('structure') ||
+      meshName.includes('strucute')
+    ) {
+
+      applyMaterial(child, {
+        color: 0xd9d9d9,
+        metalness: 1,
+        roughness: 0.35
+      });
+    }
+
+    // tape → semi transparent brown/black
+    else if (meshName.includes('tape')) {
+
+      applyMaterial(child, {
+        color: 0x2b1b0f,
+        metalness: 0.1,
+        roughness: 0.7,
+        transparent: true,
+        opacity: 0.7
+      });
+    }
+
+    // wooden → light wood
+    else if (meshName.includes('wooden')) {
+
+      applyMaterial(child, {
+        color: 0xd8b58a,
+        metalness: 0,
+        roughness: 0.9
+      });
+    }
+
+    // --------------------------------------------
+    // SELECTABLES
+    // --------------------------------------------
+
+    // lid → white
+    else if (meshName.includes('lid')) {
+
+      applyMaterial(child, {
+        color: 0xf2f1df,
+        roughness: 0.85
+      });
+    }
+
+    // keys
+    else if (meshName.includes('key')) {
+
+      const whiteKeys = [
+        'key_1d',
+        'key_2d',
+        'key_3d'
+      ];
+
+      // black keys ending with d, non keys che indicano re maggiore (whiteKeys)
+      if (meshName.endsWith('d') && (!(whiteKeys.includes(meshName)))) {
+
+        applyMaterial(child, {
+          color: 0x111111,
+          roughness: 0.6
+        });
+
+      } else {
+
+        applyMaterial(child, {
+          color: 0xffffff,
+          roughness: 0.8
+        });
+      }
+    }
+
+    // power → red
+    else if (meshName.includes('power')) {
+
+      applyMaterial(child, {
+        color: 0xff0000,
+        roughness: 0.5
+      });
+    }
+
+    // tone volume pitch → black
+    else if (
+      meshName.includes('tone') ||
+      meshName.includes('volume') ||
+      meshName.includes('pitch')
+    ) {
+
+      applyMaterial(child, {
+        color: 0x111111,
+        roughness: 0.7
+      });
+    }
+
+    // tape select → black
+    else if (meshName.includes('tape_select')) {
+
+      applyMaterial(child, {
+        color: 0xd9d9d9,
+        roughness: 0.4
+      });
+    }
+
+    // --------------------------------------------
+    // FALLBACK
+    // --------------------------------------------
+
+    else {
+
+      applyMaterial(child, {
+        color: 0xcccccc,
+        roughness: 0.8
+      });
+    }
+  });
+
+  console.log(
+    "Selectable meshes:",
+    selectableMeshes.length
   );
 
   window.addEventListener('click', onMouseClick);
@@ -420,8 +628,20 @@ export function initScene(onBack) {
 
       selectedObject = intersects[0].object;
 
-      // darken selected mesh
+       // lid → hide
+    if (
+      selectedObject.name
+        .toLowerCase()
+        .includes('lid')
+    ) {
+
+      selectedObject.visible = false;
+
+    } else {
+
+      // normal selection highlight
       selectedObject.material.color.set(0x444444);
+    }
 
       console.log("Selected:", selectedObject.name);
 
@@ -446,7 +666,9 @@ export function initScene(onBack) {
 
       mesh.visible = true;
 
-      mesh.material.color.set(0xffffff);
+      mesh.material.color.copy(
+        mesh.userData.originalColor
+      );
 
       mesh.material.emissive.set(0x000000);
 
@@ -479,10 +701,9 @@ export function initScene(onBack) {
   }
 
   // ------------------------------------------------
-  // RESIZE
+  // RESIZE fuction (to have coherence between object and camera)
   // ------------------------------------------------
   window.addEventListener('resize', onResize);
-
   function onResize() {
 
     camera.aspect =
@@ -500,7 +721,6 @@ export function initScene(onBack) {
   // ANIMATION
   // ------------------------------------------------
   let animationId;
-
   function animate() {
 
     animationId =
@@ -600,26 +820,24 @@ export function initScene(onBack) {
     onBack();
   });
 
-
   window.addEventListener('mousemove', onMouseMove);
 
   function onMouseMove(event) {
-
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   }
-}
 
+  }); 
+
+}
 
 
 /*
 TODO: 
-- metti textures 
 - aggiungi bottoni a parti specifiche 
+- aggiungi suoni
+- rendi selezionabili più keys assieme
+- cambia la posizione della camera in base a elemento selezionato (rimuovo lid -> overview, suono -> verso keyboard)
 - aggiungi literature reviews (onedrive folder) al main menu
-- raycast visibile UPDATE: capisci offset problem
-- limita elementi selezionabili
 - prepara testo informativo
-- vedi se aggiungere pitch roll
 */
