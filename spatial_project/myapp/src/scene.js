@@ -81,6 +81,7 @@ export function initScene(onBack) {
       visible: vector.z < 1 // davanti alla camera
     };
   }
+  
 
   const labelDefinitions = [
     {
@@ -96,7 +97,15 @@ export function initScene(onBack) {
       getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('key')),
       text: 'Interactive keyboard',
       icon: '',
-      condition: () => true,
+      condition: () => lidMesh && lidMesh.visible,
+      offset: { x: 130, y: 40 }
+    },
+    {
+      id: 'label-tapes',
+      getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('structure004')),
+      text: 'About magnetic tape',
+      icon: '',
+      condition: () => !(lidMesh && lidMesh.visible),
       offset: { x: 130, y: 40 }
     },
 
@@ -218,16 +227,7 @@ export function initScene(onBack) {
   // IMAGE POPUP BUTTON + MODAL
   // ------------------------------------------------
 
-  // Button
-  const imageBtn = document.createElement('button');
-  imageBtn.innerText = 'Show Tape Image';
 
-  imageBtn.style.position = 'absolute';
-  imageBtn.style.top = '60px';
-  imageBtn.style.right = '20px';
-  imageBtn.style.zIndex = '1000';
-
-  document.body.appendChild(imageBtn);
 
   // Modal overlay
   const modal = document.createElement('div');
@@ -277,7 +277,7 @@ export function initScene(onBack) {
       It was widely used in audio recording, video storage, and early computer backup systems.
     </p>
     <p>
-      Each key of the Mellotron can have up to 3 magnetic tapes containing a 15s sample registration
+      Each key of the Mellotron can have up to 3 magnetic tapes, each containing a 15s sample registration
     </p>
   `;
 
@@ -288,9 +288,7 @@ export function initScene(onBack) {
   document.body.appendChild(modal);
 
 
-  imageBtn.addEventListener('click', () => {
-    modal.style.display = 'flex';
-  });
+
 
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
@@ -475,7 +473,8 @@ export function initScene(onBack) {
       meshName.includes('tone') ||
       meshName.includes('volume') ||
       meshName.includes('pitch') ||
-      meshName.includes('tape_select')
+      meshName.includes('tape_select')||
+      meshName.includes('structure004')
     );
   }
 
@@ -485,6 +484,9 @@ export function initScene(onBack) {
   // --------------------------------------------
 
   model.traverse((child) => {
+
+    if (child.isMesh) console.log(child.name);
+
 
     if (!child.isMesh) return;
 
@@ -761,28 +763,44 @@ export function initScene(onBack) {
 
     if (intersects.length > 0) {
 
-      selectedObject = intersects[0].object;
+      // salta lid se è già nascosto
+      const hit = intersects.find(i => {
+        if (i.object.name.toLowerCase().includes('lid') && !lidMesh.visible) {
+          return false;
+        }
+        return true;
+      });
 
-    // lid → hide it and set camera above, looking down
-    if (
-      selectedObject.name
-        .toLowerCase()
-        .includes('lid')
-    ) {
+      if (!hit) {
+        selectedObject = null;
+        return;
+      }
 
-      selectedObject.visible = false;
+      selectedObject = hit.object;
+      // lid → hide it and set camera above, looking down
+      if (
+        selectedObject.name
+          .toLowerCase()
+          .includes('lid')
+      ) {
 
-      // FORCE CAMERA POSE from above
-      camera.position.set(
-        0.0000028409055144181794,
-        2.8413612915298456,
-        -5.089054094735462e-8
-      );
+        selectedObject.visible = false;
+
+        // FORCE CAMERA POSE from above
+        camera.position.set(
+          0.0000028409055144181794,
+          2.8413612915298456,
+          -5.089054094735462e-8
+        );
 
       controls.target.set(0, 0, 0);
 
       // update controls so OrbitControls doesn't override
       controls.update();
+    } else if (selectedObject.name.toLowerCase().includes('structure004')) {
+  
+      modal.style.display = 'flex';
+      selectedObject.material.color.copy(selectedObject.userData.originalColor); // nessun highlight
 
     } else {
 
@@ -866,6 +884,7 @@ export function initScene(onBack) {
     );
   }
 
+  console.log("Selectable meshes names:", selectableMeshes.map(m => m.name));
   // ------------------------------------------------
   // ANIMATION
   // ------------------------------------------------
