@@ -492,7 +492,8 @@ scene.add(rayLine);
 
     controls.update();
 
-     // update ray visual
+    controls.maxPolarAngle = (Math.PI / 2) - 0.04; // limits camera view to above floor level (had to adjusta little, because at PI/2, one could still see under the ground level)
+    // update ray visual
     raycaster.setFromCamera(mouse, camera);
 
     const origin = raycaster.ray.origin;
@@ -560,7 +561,6 @@ scene.add(rayLine);
 
 /*
 TODO: 
-- limita camera view 
 - metti textures 
 - aggiungi bottoni a parti specifiche 
 - aggiungi literature reviews (onedrive folder) al main menu
