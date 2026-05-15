@@ -618,7 +618,7 @@ TODO:
 - metti textures 
 - aggiungi bottoni a parti specifiche 
 - aggiungi literature reviews (onedrive folder) al main menu
-- raycast visibile
+- raycast visibile UPDATE: capisci offset problem
 - limita elementi selezionabili
 - prepara testo informativo
 - vedi se aggiungere pitch roll

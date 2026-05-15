@@ -36,7 +36,7 @@ h1 {
 #app {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  
   text-align: center;
 }
 
@@ -152,4 +152,16 @@ button:focus-visible {
   gap: 10px;
 
   pointer-events: auto;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+canvas {
+  display: block;
 }
