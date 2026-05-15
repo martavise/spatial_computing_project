@@ -94,11 +94,11 @@ export function initScene(onBack) {
     },
     {
       id: 'label-keys',
-      getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('key')),
+      getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('power')),
       text: 'Interactive keyboard',
       icon: '',
       condition: () => lidMesh && lidMesh.visible,
-      offset: { x: 130, y: 40 }
+      offset: { x: -200, y: 40 }
     },
     {
       id: 'label-tapes',
@@ -224,10 +224,8 @@ export function initScene(onBack) {
   document.body.appendChild(backButton);
 
   // ------------------------------------------------
-  // IMAGE POPUP BUTTON + MODAL
+  // IMAGE POPUP 
   // ------------------------------------------------
-
-
 
   // Modal overlay
   const modal = document.createElement('div');
@@ -286,15 +284,55 @@ export function initScene(onBack) {
   container.appendChild(text);
   modal.appendChild(container);
   document.body.appendChild(modal);
-
-
-
-
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.style.display = 'none';
     }
   });
+
+  // ------------------------------------------------
+  // Keyboard MODAL
+  // ------------------------------------------------
+  const powerModal = document.createElement('div');
+  powerModal.style.position = 'fixed';
+  powerModal.style.top = '0';
+  powerModal.style.left = '0';
+  powerModal.style.width = '100vw';
+  powerModal.style.height = '100vh';
+  powerModal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+  powerModal.style.display = 'none';
+  powerModal.style.alignItems = 'center';
+  powerModal.style.justifyContent = 'center';
+  powerModal.style.zIndex = '2000';
+
+  const powerContainer = document.createElement('div');
+  powerContainer.style.background = '#fff';
+  powerContainer.style.padding = '32px';
+  powerContainer.style.borderRadius = '12px';
+  powerContainer.style.maxWidth = '420px';
+  powerContainer.style.fontFamily = 'Arial, sans-serif';
+  powerContainer.style.color = '#222';
+  powerContainer.style.lineHeight = '1.6';
+
+  powerContainer.innerHTML = `
+    <h2> How to Play</h2>
+    <p>
+      It is possible to test the Mellotron by selecting the wanted keys
+      (<strong>Shift + click</strong> to select multiple keys at the same time)
+      and then hold <strong>'E'</strong> to play the selected notes.
+    </p>
+  `;
+
+  powerModal.appendChild(powerContainer);
+  document.body.appendChild(powerModal);
+
+  powerModal.addEventListener('click', (e) => {
+    if (e.target === powerModal) {
+      powerModal.style.display = 'none';
+    }
+  });
+
+
 
   // ------------------------------------------------
   // ORBIT CONTROLS
@@ -743,6 +781,7 @@ export function initScene(onBack) {
 
 
   let selectedObject = null;
+  const selectedKeys = new Set(); // per selezionare più tasti
 
   function onMouseClick(event) {
 
@@ -753,67 +792,101 @@ export function initScene(onBack) {
 
     const intersects = raycaster.intersectObjects(selectableMeshes, true);
 
+    const hit = intersects.find(i => {
+      if (i.object.name.toLowerCase().includes('lid') && !lidMesh.visible) {
+        return false;
+      }
+      return true;
+    });
 
-    // restore previous selection
-    if (selectedObject) {
-      selectedObject.material.color.copy(
-        selectedObject.userData.originalColor
-      );
+    if (!hit) {
+      // click su vuoto: deseleziona tutto
+      if (!event.shiftKey) {
+        selectedKeys.forEach(m => m.material.color.copy(m.userData.originalColor));
+        selectedKeys.clear();
+        if (selectedObject) {
+          selectedObject.material.color.copy(selectedObject.userData.originalColor);
+          selectedObject = null;
+        }
+      }
+      return;
     }
 
-    if (intersects.length > 0) {
+    const clicked = hit.object;
+    const clickedName = clicked.name.toLowerCase();
 
-      // salta lid se è già nascosto
-      const hit = intersects.find(i => {
-        if (i.object.name.toLowerCase().includes('lid') && !lidMesh.visible) {
-          return false;
+    // KEY → selezione multipla con Shift, singola senza
+    if (clickedName.includes('key')) {
+
+      if (event.shiftKey) {
+        // toggle: se già selezionata, deseleziona
+        if (selectedKeys.has(clicked)) {
+          clicked.material.color.copy(clicked.userData.originalColor);
+          selectedKeys.delete(clicked);
+        } else {
+          clicked.material.color.set(0x444444);
+          selectedKeys.add(clicked);
         }
-        return true;
-      });
 
-      if (!hit) {
-        selectedObject = null;
-        return;
+      } else {
+        // click normale: deseleziona tutte le altre keys
+        selectedKeys.forEach(m => m.material.color.copy(m.userData.originalColor));
+        selectedKeys.clear();
+        clicked.material.color.set(0x444444);
+        selectedKeys.add(clicked);
+
+
+        // nascondi labels
+        Object.values(labelElements).forEach(el => {
+          el.div.style.opacity = '0';
+          el.line.style.opacity = '0';
+          el.dot.style.opacity = '0';
+        });
       }
 
-      selectedObject = hit.object;
-      // lid → hide it and set camera above, looking down
-      if (
-        selectedObject.name
-          .toLowerCase()
-          .includes('lid')
-      ) {
+      selectedObject = null; // non usare più selectedObject per le keys
+      console.log("Selected keys:", [...selectedKeys].map(m => m.name));
+      return;
+    }
 
-        selectedObject.visible = false;
+    // ripristina selezione keys se si clicca altro
+    selectedKeys.forEach(m => m.material.color.copy(m.userData.originalColor));
+    selectedKeys.clear();
 
-        // FORCE CAMERA POSE from above
-        camera.position.set(
-          0.0000028409055144181794,
-          2.8413612915298456,
-          -5.089054094735462e-8
-        );
+    // ripristina selectedObject precedente
+    if (selectedObject) {
+      selectedObject.material.color.copy(selectedObject.userData.originalColor);
+    }
 
+    selectedObject = clicked;
+
+    if (clickedName.includes('lid')) {
+
+      selectedObject.visible = false;
+      camera.position.set(
+        0.0000028409055144181794,
+        2.8413612915298456,
+        -5.089054094735462e-8
+      );
       controls.target.set(0, 0, 0);
-
-      // update controls so OrbitControls doesn't override
       controls.update();
-    } else if (selectedObject.name.toLowerCase().includes('structure004')) {
-  
+
+    } else if (clickedName.includes('structure004')) {
+
       modal.style.display = 'flex';
-      selectedObject.material.color.copy(selectedObject.userData.originalColor); // nessun highlight
+      selectedObject.material.color.copy(selectedObject.userData.originalColor);
+
+    } else if (clickedName.includes('power')) {
+
+      powerModal.style.display = 'flex';
+      selectedObject.material.color.copy(selectedObject.userData.originalColor);
 
     } else {
 
-      // normal selection highlight
       selectedObject.material.color.set(0x444444);
     }
 
-      console.log("Selected:", selectedObject.name);
-
-    } else {
-
-      selectedObject = null;
-    }
+    console.log("Selected:", selectedObject.name);
   }
 
 
@@ -823,50 +896,58 @@ export function initScene(onBack) {
   // ------------------------------------------------
   window.addEventListener('keydown', onKeyDown);
 
+  // flag per evitare che il suono riparta ad ogni keydown ripetuto
+  let eKeyDown = false;
+  // tieni traccia dei suoni attivi per poterli stoppare
+  const activeSounds = [];
+
+  let soundStopTimeout = null; // timeout per i 15 secondi
+
   function onKeyDown(e) {
 
-    // reset view
     if (e.key === 'Escape') {
-
-    // restore all mesh colors
-    selectableMeshes.forEach((mesh) => {
-
-      mesh.visible = true;
-
-      mesh.material.color.copy(
-        mesh.userData.originalColor
-      );
-
-      mesh.material.emissive.set(0x000000);
-
-      mesh.material.emissiveIntensity = 0;
-    });
-
-    // clear selected object
-    selectedObject = null;
-  }
-
-    // zoom in
-    if (
-      e.key === '+' ||
-      e.key === '=' ||
-      e.key === 'Add'
-    ) {
-
-      camera.position.z -= 0.5;
+      selectableMeshes.forEach((mesh) => {
+        mesh.visible = true;
+        mesh.material.color.copy(mesh.userData.originalColor);
+        mesh.material.emissive.set(0x000000);
+        mesh.material.emissiveIntensity = 0;
+      });
+      selectedObject = null;
+      selectedKeys.clear();
     }
 
-    // zoom out
-    if (
-      e.key === '-' ||
-      e.key === '_' ||
-      e.key === 'Subtract'
-    ) {
+    // suona le keys selezionate solo al primo keydown, non sui repeat
+    if ((e.key === 'e' || e.key === 'E') && !eKeyDown) {
+      eKeyDown = true;
+      playSelectedKeys();
+    }
 
+    if (e.key === '+' || e.key === '=' || e.key === 'Add') {
+      camera.position.z -= 0.5;
+    }
+    if (e.key === '-' || e.key === '_' || e.key === 'Subtract') {
       camera.position.z += 0.5;
     }
   }
 
+  function onKeyUp(e) {
+    if (e.key === 'e' || e.key === 'E') {
+      eKeyDown = false;
+
+      // cancella il timeout dei 15s se si rilascia prima
+      if (soundStopTimeout) {
+        clearTimeout(soundStopTimeout);
+        soundStopTimeout = null;
+      }
+      // stoppa tutti i suoni attivi
+      activeSounds.forEach(s => {
+        if (s.isPlaying) s.stop();
+      });
+      activeSounds.length = 0;
+    }
+  }
+
+  window.addEventListener('keyup', onKeyUp);
   // ------------------------------------------------
   // RESIZE fuction (to have coherence between object and camera)
   // ------------------------------------------------
@@ -885,6 +966,74 @@ export function initScene(onBack) {
   }
 
   console.log("Selectable meshes names:", selectableMeshes.map(m => m.name));
+    const keyAudioMap = {
+      'key_0g':  '/music/Woodwinds/G2-4.wav',
+      'key_0gd': '/music/Woodwinds/Gs2-4.wav',
+      'key_0a':  '/music/Woodwinds/A2-4.wav',
+      'key_0ad': '/music/Woodwinds/As2-4.wav',
+      'key_0b':  '/music/Woodwinds/B2-4.wav',
+      'key_1c':  '/music/Woodwinds/C3-4.wav',
+      'key_1cd': '/music/Woodwinds/Cs3-4.wav',
+      'key_1d':  '/music/Woodwinds/D3-4.wav',
+      'key_1dd': '/music/Woodwinds/Ds3-4.wav',
+      'key_1e':  '/music/Woodwinds/E3-4.wav',
+      'key_1f':  '/music/Woodwinds/F3-4.wav',
+      'key_1fd': '/music/Woodwinds/Fs3-4.wav',
+      'key_1g':  '/music/Woodwinds/G3-4.wav',
+      'key_1gd': '/music/Woodwinds/Gs3-4.wav',
+      'key_1a':  '/music/Woodwinds/A3-4.wav',
+      'key_1ad': '/music/Woodwinds/As3-4.wav',
+      'key_1b':  '/music/Woodwinds/B3-4.wav',
+      'key_2c':  '/music/Woodwinds/C4-4.wav',
+      'key_2cd': '/music/Woodwinds/Cs4-4.wav',
+      'key_2d':  '/music/Woodwinds/D4-4.wav',
+      'key_2dd': '/music/Woodwinds/Ds4-4.wav',
+      'key_2e':  '/music/Woodwinds/E4-4.wav',
+      'key_2f':  '/music/Woodwinds/F4-4.wav',
+      'key_2fd': '/music/Woodwinds/Fs4-4.wav',
+      'key2g':   '/music/Woodwinds/G4-4.wav',
+      'key2gd':  '/music/Woodwinds/Gs4-4.wav',
+      'key_2a':  '/music/Woodwinds/A4-4.wav',
+      'key_2ad': '/music/Woodwinds/As4-4.wav',
+      'key_2b':  '/music/Woodwinds/B4-4.wav',
+      'key_3c':  '/music/Woodwinds/C5-4.wav',
+      'key_3cd': '/music/Woodwinds/Cs5-4.wav',
+      'key_3d':  '/music/Woodwinds/D5-4.wav',
+      'key_3dd': '/music/Woodwinds/Ds5-4.wav',
+      'key_3e':  '/music/Woodwinds/E5-4.wav',
+    };
+  const keyBuffers = {}; // meshName → AudioBuffer
+
+  Object.entries(keyAudioMap).forEach(([meshName, url]) => {
+    audioLoader.load(url, (buffer) => {
+      keyBuffers[meshName] = buffer;
+    });
+  });
+
+  function playSelectedKeys() {
+    selectedKeys.forEach(mesh => {
+      const meshName = mesh.name.toLowerCase();
+      const buffer = keyBuffers[meshName];
+      if (!buffer) {
+        console.warn('No audio buffer for:', meshName);
+        return;
+      }
+      const keySound = new THREE.Audio(listener);
+      keySound.setBuffer(buffer);
+      keySound.setLoop(true); // loop mentre tieni premuto
+      keySound.setVolume(0.8);
+      keySound.play();
+      activeSounds.push(keySound); // tieni traccia per stoppare al keyup
+    });
+      // stoppa automaticamente dopo 15 secondi
+    soundStopTimeout = setTimeout(() => {
+      activeSounds.forEach(s => {
+        if (s.isPlaying) s.stop();
+      });
+      activeSounds.length = 0;
+    }, 7000);
+  }
+  
   // ------------------------------------------------
   // ANIMATION
   // ------------------------------------------------
@@ -950,7 +1099,8 @@ export function initScene(onBack) {
     // cylinder default axis correction
     laser.rotateX(Math.PI / 2);
 
-    /* to check camera info
+    /*
+    //to check camera info
     console.log(
       'Camera position:',
       camera.position,
@@ -958,6 +1108,7 @@ export function initScene(onBack) {
       camera.rotation
     );
     */
+    
 
     // Aggiorna label overlay
     labelDefinitions.forEach(def => {
@@ -1052,16 +1203,12 @@ export function initScene(onBack) {
 
   }); 
 
+
 }
 
 
 /*
 TODO: 
-- aggiungi bottoni a parti specifiche 
-- aggiungi suoni
-- rendi selezionabili più keys assieme
-- cambia la posizione della camera in base a elemento selezionato (rimuovo lid -> overview, suono -> verso keyboard)
 - aggiungi literature reviews (onedrive folder) al main menu
-- prepara testo informativo
 */
 
