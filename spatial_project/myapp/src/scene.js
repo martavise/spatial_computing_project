@@ -3,12 +3,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export function initScene(onBack) {
-  // meshes unused in the selection
-  const NON_SELECTABLE = [
-    'cover',
-    'structure',
-    'strucute'
-  ];
 
   // ------------------------------------------------
   // THREE.JS SCENE
@@ -17,7 +11,7 @@ export function initScene(onBack) {
   scene.background = new THREE.Color(0xD1003B);
 
   // ------------------------------------------------
-  // CAMERA
+  //  THRE.JS CAMERA
   // ------------------------------------------------
   const camera = new THREE.PerspectiveCamera(
     60,
@@ -25,7 +19,6 @@ export function initScene(onBack) {
     0.1,
     1000
   );
-
   camera.position.set(0, 1, 5);
 
   // ------------------------------------------------
@@ -38,8 +31,90 @@ export function initScene(onBack) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
+  // shadows
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+
   document.getElementById('app')
     .appendChild(renderer.domElement);
+
+    
+  // ------------------------------------------------
+  // ORBIT CONTROLS
+  // ------------------------------------------------
+  const controls = new OrbitControls(
+    camera,
+    renderer.domElement
+  );
+
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  // ------------------------------------------------
+  // LIGHTS (with shadows)
+  // ------------------------------------------------
+  const directionalLight =
+  new THREE.DirectionalLight(0xffffff, 2);
+
+  directionalLight.position.set(5, 10, 5);
+
+  // enable shadow casting
+  directionalLight.castShadow = true;
+  directionalLight.shadow.bias = -0.0005;
+  directionalLight.shadow.normalBias = 0.02;
+
+  // shadow quality
+  directionalLight.shadow.mapSize.width = 2048;
+  directionalLight.shadow.mapSize.height = 2048;
+
+  // shadow camera area
+  directionalLight.shadow.camera.near = 0.5;
+  directionalLight.shadow.camera.far = 50;
+
+  directionalLight.shadow.camera.left = -10;
+  directionalLight.shadow.camera.right = 10;
+  directionalLight.shadow.camera.top = 10;
+  directionalLight.shadow.camera.bottom = -10;
+
+  // softer shadows
+  directionalLight.shadow.radius = 4;
+  scene.add(directionalLight);
+
+
+  // ------------------------------------------------
+  // GROUND
+  // ------------------------------------------------
+  const groundGeometry = new THREE.PlaneGeometry(50, 50);
+
+  // PARQUET TEXTURE
+  const textureLoader = new THREE.TextureLoader();
+  const woodTexture = textureLoader.load(
+    '/textures/parquet.jpg'
+  );
+  // repeat texture
+  woodTexture.wrapS = THREE.RepeatWrapping;
+  woodTexture.wrapT = THREE.RepeatWrapping;
+  woodTexture.repeat.set(8, 8);
+  woodTexture.colorSpace = THREE.SRGBColorSpace
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    map: woodTexture,
+    roughness: 0.8,
+    metalness: 0
+  });
+  const ground = new THREE.Mesh(
+    groundGeometry,
+    groundMaterial
+  );
+  // rotate plane to horizontal
+  ground.rotation.x = -Math.PI / 2;
+  // slightly below model
+  ground.position.y = 0;
+  // receive shadows/light nicely
+  ground.receiveShadow = true;
+  scene.add(ground);
 
 
   // ------------------------------------------------
@@ -82,7 +157,6 @@ export function initScene(onBack) {
     };
   }
   
-
   const labelDefinitions = [
     {
       id: 'label-lid',
@@ -158,7 +232,6 @@ export function initScene(onBack) {
 
     labelElements[def.id] = { div, line, dot };
   });
-
   // Aggiungi l'animazione CSS per le linee
   const styleEl = document.createElement('style');
   styleEl.textContent = `
@@ -190,23 +263,7 @@ export function initScene(onBack) {
     sound.setVolume(0.5);
   });
 
-  const soundBtn = document.getElementById('soundBtn');
 
-  soundBtn.addEventListener('click', () => {
-
-    if (!soundPlaying) {
-
-      sound.play();
-      soundPlaying = true;
-      soundBtn.innerText = '🔇 Sound Off';
-
-    } else {
-
-      sound.pause();
-      soundPlaying = false;
-      soundBtn.innerText = '🔊 Sound On';
-    }
-  });
 
   // ------------------------------------------------
   // BACK BUTTON
@@ -335,80 +392,6 @@ export function initScene(onBack) {
 
 
   // ------------------------------------------------
-  // ORBIT CONTROLS
-  // ------------------------------------------------
-  const controls = new OrbitControls(
-    camera,
-    renderer.domElement
-  );
-
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-
-  // ------------------------------------------------
-  // LIGHTS
-  // ------------------------------------------------
-  const ambientLight =
-    new THREE.AmbientLight(0xffffff, 1.2);
-
-  scene.add(ambientLight);
-
-  const directionalLight =
-    new THREE.DirectionalLight(0xffffff, 2);
-
-  directionalLight.position.set(5, 5, 5);
-
-  scene.add(directionalLight);
-
-  // ------------------------------------------------
-  // GROUND
-  // ------------------------------------------------
-
-  // Ground plane
-  const groundGeometry = new THREE.PlaneGeometry(50, 50);
-
-  // ------------------------------------------------
-  // PARQUET TEXTURE
-  // ------------------------------------------------
-  const textureLoader = new THREE.TextureLoader();
-
-  const woodTexture = textureLoader.load(
-    '/textures/parquet.jpg'
-  );
-
-  // repeat texture
-  woodTexture.wrapS = THREE.RepeatWrapping;
-  woodTexture.wrapT = THREE.RepeatWrapping;
-
-  woodTexture.repeat.set(8, 8);
-
-  woodTexture.colorSpace = THREE.SRGBColorSpace;
-
-  const groundMaterial = new THREE.MeshStandardMaterial({
-    map: woodTexture,
-    roughness: 0.8,
-    metalness: 0
-  });
-
-  const ground = new THREE.Mesh(
-    groundGeometry,
-    groundMaterial
-  );
-
-  // rotate plane to horizontal
-  ground.rotation.x = -Math.PI / 2;
-
-  // slightly below model/grid
-  ground.position.y = 0;
-
-  // receive shadows/light nicely
-  ground.receiveShadow = true;
-
-  scene.add(ground);
-
-
-
-  // ------------------------------------------------
   // MODEL
   // ------------------------------------------------
   const loader = new GLTFLoader();
@@ -517,6 +500,7 @@ export function initScene(onBack) {
   }
 
 
+
   // --------------------------------------------
   // MODEL TRAVERSE
   // --------------------------------------------
@@ -527,6 +511,8 @@ export function initScene(onBack) {
 
 
     if (!child.isMesh) return;
+    child.castShadow = true;
+    child.receiveShadow = true;
 
     const meshName = child.name.toLowerCase();
 
@@ -700,13 +686,19 @@ export function initScene(onBack) {
       });
     }
 
-    // tape select → black
+    // tape select → black and can rotate
     else if (meshName.includes('tape_select')) {
 
       applyMaterial(child, {
         color: 0xd9d9d9,
         roughness: 0.4
       });
+      child.userData.isRotatable = true;
+      child.userData.rotationStep = 0;
+      child.userData.A_sound = true;
+      child.userData.B_sound = false;
+      child.userData.C_sound = false;
+    
     }
 
     // --------------------------------------------
@@ -784,7 +776,6 @@ export function initScene(onBack) {
   const selectedKeys = new Set(); // per selezionare più tasti
 
   function onMouseClick(event) {
-
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -814,6 +805,9 @@ export function initScene(onBack) {
 
     const clicked = hit.object;
     const clickedName = clicked.name.toLowerCase();
+
+    console.log("clicked:", clicked.name);
+   
 
     // KEY → selezione multipla con Shift, singola senza
     if (clickedName.includes('key')) {
@@ -880,31 +874,60 @@ export function initScene(onBack) {
 
       powerModal.style.display = 'flex';
       selectedObject.material.color.copy(selectedObject.userData.originalColor);
+  
+    } else if (clickedName.includes('tape_select')) {
 
+      clicked.userData.rotationStep =
+        ((clicked.userData.rotationStep || 0) + 1)%3;  // bounded to the 3 positions A B C
+
+      clicked.rotation.y = THREE.MathUtils.degToRad(
+        clicked.userData.rotationStep * 30  // 30° per click
+      );
+
+      const step = clicked.userData.rotationStep;
+      // sound booleans
+      clicked.userData.A_sound = (step === 0);
+      clicked.userData.B_sound = (step === 1);
+      clicked.userData.C_sound = (step === 2);
+
+      console.log(
+        `tape_select step: ${step}`,
+        `| A: ${clicked.userData.A_sound}`,
+        `| B: ${clicked.userData.B_sound}`,
+        `| C: ${clicked.userData.C_sound}`
+      );
+
+      // Don't highlight — restore color immediately
+      selectedObject.material.color.copy(
+        selectedObject.userData.originalColor
+      );
+      selectedObject = null;
+      return;
+
+    
     } else {
 
       selectedObject.material.color.set(0x444444);
-    }
 
+    }
     console.log("Selected:", selectedObject.name);
   }
-
-
 
   // ------------------------------------------------
   // KEYBOARD INTERACTIONS
   // ------------------------------------------------
   window.addEventListener('keydown', onKeyDown);
 
+  /*
+  SOUND SETTINGS
+  */
   // flag per evitare che il suono riparta ad ogni keydown ripetuto
   let eKeyDown = false;
   // tieni traccia dei suoni attivi per poterli stoppare
   const activeSounds = [];
-
   let soundStopTimeout = null; // timeout per i 15 secondi
 
   function onKeyDown(e) {
-
     if (e.key === 'Escape') {
       selectableMeshes.forEach((mesh) => {
         mesh.visible = true;
@@ -915,13 +938,12 @@ export function initScene(onBack) {
       selectedObject = null;
       selectedKeys.clear();
     }
-
     // suona le keys selezionate solo al primo keydown, non sui repeat
     if ((e.key === 'e' || e.key === 'E') && !eKeyDown) {
       eKeyDown = true;
       playSelectedKeys();
     }
-
+    //ZOOM
     if (e.key === '+' || e.key === '=' || e.key === 'Add') {
       camera.position.z -= 0.5;
     }
@@ -929,11 +951,9 @@ export function initScene(onBack) {
       camera.position.z += 0.5;
     }
   }
-
   function onKeyUp(e) {
     if (e.key === 'e' || e.key === 'E') {
       eKeyDown = false;
-
       // cancella il timeout dei 15s se si rilascia prima
       if (soundStopTimeout) {
         clearTimeout(soundStopTimeout);
@@ -946,27 +966,23 @@ export function initScene(onBack) {
       activeSounds.length = 0;
     }
   }
-
   window.addEventListener('keyup', onKeyUp);
   // ------------------------------------------------
   // RESIZE fuction (to have coherence between object and camera)
   // ------------------------------------------------
   window.addEventListener('resize', onResize);
   function onResize() {
-
     camera.aspect =
       window.innerWidth / window.innerHeight;
-
     camera.updateProjectionMatrix();
-
     renderer.setSize(
       window.innerWidth,
       window.innerHeight
     );
   }
-
   console.log("Selectable meshes names:", selectableMeshes.map(m => m.name));
-    const keyAudioMap = {
+
+  const keyAudioMap = {
       'key_0g':  '/music/Woodwinds/G2-4.wav',
       'key_0gd': '/music/Woodwinds/Gs2-4.wav',
       'key_0a':  '/music/Woodwinds/A2-4.wav',
@@ -1003,7 +1019,6 @@ export function initScene(onBack) {
       'key_3e':  '/music/Woodwinds/E5-4.wav',
     };
   const keyBuffers = {}; // meshName → AudioBuffer
-
   Object.entries(keyAudioMap).forEach(([meshName, url]) => {
     audioLoader.load(url, (buffer) => {
       keyBuffers[meshName] = buffer;
@@ -1025,7 +1040,7 @@ export function initScene(onBack) {
       keySound.play();
       activeSounds.push(keySound); // tieni traccia per stoppare al keyup
     });
-      // stoppa automaticamente dopo 15 secondi
+      // stoppa automaticamente dopo 7 secondi
     soundStopTimeout = setTimeout(() => {
       activeSounds.forEach(s => {
         if (s.isPlaying) s.stop();
@@ -1039,66 +1054,44 @@ export function initScene(onBack) {
   // ------------------------------------------------
   let animationId;
   function animate() {
-
     animationId =
       requestAnimationFrame(animate);
-
     controls.update();
-
-
     controls.maxPolarAngle = (Math.PI / 2) - 0.04; // limits camera view to above floor level (had to adjusta little, because at PI/2, one could still see under the ground level)
-    // update ray visual
+    /*
+    RAYCAST UPDATE
+    */
     raycaster.setFromCamera(mouse, camera);
-
     // laser pointer logic
     const origin = raycaster.ray.origin.clone();
-
     const direction = raycaster.ray.direction.clone();
- 
     // intersections with model
     const intersects = raycaster.intersectObjects(
       selectableMeshes,
       true
     );
-
     let targetPoint;
-
     // if ray hits object
     if (intersects.length > 0) {
-
       targetPoint = intersects[0].point;
-
       laserDot.visible = true;
       laserDot.position.copy(targetPoint);
-
     } else {
-
-      // extend laser forward
       targetPoint = origin.clone().add(
         direction.multiplyScalar(20)
       );
-
       laserDot.visible = false;
     }
-
-    // midpoint
     const midpoint = origin.clone().lerp(targetPoint, 0.5);
-
-    // laser length
     const distance = origin.distanceTo(targetPoint);
-
-    // position laser
+    // position 
     laser.position.copy(midpoint);
-
     // scale to length
     laser.scale.set(1, distance, 1);
-
     // orient laser
     laser.lookAt(targetPoint);
-
     // cylinder default axis correction
     laser.rotateX(Math.PI / 2);
-
     /*
     //to check camera info
     console.log(
@@ -1108,8 +1101,7 @@ export function initScene(onBack) {
       camera.rotation
     );
     */
-    
-
+  
     // Aggiorna label overlay
     labelDefinitions.forEach(def => {
       const el = labelElements[def.id];
@@ -1121,16 +1113,13 @@ export function initScene(onBack) {
         el.dot.style.opacity = '0';
         return;
       }
-
       const screen = toScreenPosition(mesh, camera);
-
       if (!screen.visible) {
         el.div.style.opacity = '0';
         el.line.style.opacity = '0';
         el.dot.style.opacity = '0';
         return;
       }
-
       const labelX = screen.x + def.offset.x;
       const labelY = screen.y + def.offset.y;
 
@@ -1163,44 +1152,32 @@ export function initScene(onBack) {
   // CLEANUP + BACK
   // ------------------------------------------------
   backButton.addEventListener('click', () => {
-
     cancelAnimationFrame(animationId);
-
     window.removeEventListener(
       'click',
       onMouseClick
     );
-
     window.removeEventListener(
       'keydown',
       onKeyDown
     );
-
     window.removeEventListener(
       'resize',
       onResize
     );
-
     controls.dispose();
-
     renderer.dispose();
-
     renderer.domElement.remove();
-
     backButton.remove();
     labelContainer.remove();
     styleEl.remove();
-
     onBack();
   });
-
   window.addEventListener('mousemove', onMouseMove);
-
   function onMouseMove(event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   }
-
   }); 
 
 
@@ -1210,5 +1187,7 @@ export function initScene(onBack) {
 /*
 TODO: 
 - aggiungi literature reviews (onedrive folder) al main menu
+SE C'È TEMPO:
+- fai selezione tapes
 */
 
