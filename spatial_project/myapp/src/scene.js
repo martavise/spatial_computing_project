@@ -4,6 +4,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export function initScene(onBack) {
 
+  // booleans for tape selection
+  let A_sound = true;
+  let B_sound = false;
+  let C_sound = false;
+
+  
   // ------------------------------------------------
   // THREE.JS SCENE
   // ------------------------------------------------
@@ -695,9 +701,6 @@ export function initScene(onBack) {
       });
       child.userData.isRotatable = true;
       child.userData.rotationStep = 0;
-      child.userData.A_sound = true;
-      child.userData.B_sound = false;
-      child.userData.C_sound = false;
     
     }
 
@@ -758,7 +761,7 @@ export function initScene(onBack) {
   scene.add(laser);
 
   // small glowing dot at hit point
-  const dotGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+  const dotGeometry = new THREE.SphereGeometry(0.02, 16, 16);
 
   const dotMaterial = new THREE.MeshBasicMaterial({
     color: 0xff0000
@@ -886,15 +889,15 @@ export function initScene(onBack) {
 
       const step = clicked.userData.rotationStep;
       // sound booleans
-      clicked.userData.A_sound = (step === 0);
-      clicked.userData.B_sound = (step === 1);
-      clicked.userData.C_sound = (step === 2);
+      A_sound = (step === 0);
+      B_sound = (step === 1);
+      C_sound = (step === 2);
 
       console.log(
         `tape_select step: ${step}`,
-        `| A: ${clicked.userData.A_sound}`,
-        `| B: ${clicked.userData.B_sound}`,
-        `| C: ${clicked.userData.C_sound}`
+        `| A: ${A_sound}`,
+        `| B: ${B_sound}`,
+        `| C: ${C_sound}`
       );
 
       // Don't highlight — restore color immediately
@@ -981,8 +984,8 @@ export function initScene(onBack) {
     );
   }
   console.log("Selectable meshes names:", selectableMeshes.map(m => m.name));
-
-  const keyAudioMap = {
+  
+    const keyAudioMap = {
       'key_0g':  '/music/Woodwinds/G2-4.wav',
       'key_0gd': '/music/Woodwinds/Gs2-4.wav',
       'key_0a':  '/music/Woodwinds/A2-4.wav',
@@ -1018,17 +1021,138 @@ export function initScene(onBack) {
       'key_3dd': '/music/Woodwinds/Ds5-4.wav',
       'key_3e':  '/music/Woodwinds/E5-4.wav',
     };
-  const keyBuffers = {}; // meshName → AudioBuffer
-  Object.entries(keyAudioMap).forEach(([meshName, url]) => {
+
+    const keyAudioMap_A = {
+      'key_0g':  '/music/M300A/G2-1.wav',
+      'key_0gd': '/music/M300A/Gs2-1.wav',
+      'key_0a':  '/music/M300A/A2-1.wav',
+      'key_0ad': '/music/M300A/As2-1.wav',
+      'key_0b':  '/music/M300A/B2-1.wav',
+      'key_1c':  '/music/M300A/C3-1.wav',
+      'key_1cd': '/music/M300A/Cs3-1.wav',
+      'key_1d':  '/music/M300A/D3-1.wav',
+      'key_1dd': '/music/M300A/Ds3-1.wav',
+      'key_1e':  '/music/M300A/E3-1.wav',
+      'key_1f':  '/music/M300A/F3-1.wav',
+      'key_1fd': '/music/M300A/Fs3-1.wav',
+      'key_1g':  '/music/M300A/G3-1.wav',
+      'key_1gd': '/music/M300A/Gs3-1.wav',
+      'key_1a':  '/music/M300A/A3-1.wav',
+      'key_1ad': '/music/M300A/As3-1.wav',
+      'key_1b':  '/music/M300A/B3-1.wav',
+      'key_2c':  '/music/M300A/C4-1.wav',
+      'key_2cd': '/music/M300A/Cs4-1.wav',
+      'key_2d':  '/music/M300A/D4-1.wav',
+      'key_2dd': '/music/M300A/Ds4-1.wav',
+      'key_2e':  '/music/M300A/E4-1.wav',
+      'key_2f':  '/music/M300A/F4-1.wav',
+      'key_2fd': '/music/M300A/Fs4-1.wav',
+      'key_2g':  '/music/M300A/G4-1.wav',
+      'key_2gd': '/music/M300A/Gs4-1.wav',
+      'key_2a':  '/music/M300A/A4-1.wav',
+      'key_2ad': '/music/M300A/As4-1.wav',
+      'key_2b':  '/music/M300A/B4-1.wav',
+      'key_3c':  '/music/M300A/C5-1.wav',
+      'key_3cd': '/music/M300A/Cs5-1.wav',
+      'key_3d':  '/music/M300A/D5-1.wav',
+      'key_3dd': '/music/M300A/Ds5-1.wav',
+      'key_3e':  '/music/M300A/E5-1.wav',
+    };
+
+  const keyAudioMap_B = {
+      'key_0g':  '/music/M300B/G2-2.wav',
+      'key_0gd': '/music/M300B/Gs2-2.wav',
+      'key_0a':  '/music/M300B/A2-2.wav',
+      'key_0ad': '/music/M300B/As2-2.wav',
+      'key_0b':  '/music/M300B/B2-2.wav',
+      'key_1c':  '/music/M300B/C3-2.wav',
+      'key_1cd': '/music/M300B/Cs3-2.wav',
+      'key_1d':  '/music/M300B/D3-2.wav',
+      'key_1dd': '/music/M300B/Ds3-2.wav',
+      'key_1e':  '/music/M300B/E3-2.wav',
+      'key_1f':  '/music/M300B/F3-2.wav',
+      'key_1fd': '/music/M300B/Fs3-2.wav',
+      'key_1g':  '/music/M300B/G3-2.wav',
+      'key_1gd': '/music/M300B/Gs3-2.wav',
+      'key_1a':  '/music/M300B/A3-2.wav',
+      'key_1ad': '/music/M300B/As3-2.wav',
+      'key_1b':  '/music/M300B/B3-2.wav',
+      'key_2c':  '/music/M300B/C4-2.wav',
+      'key_2cd': '/music/M300B/Cs4-2.wav',
+      'key_2d':  '/music/M300B/D4-2.wav',
+      'key_2dd': '/music/M300B/Ds4-2.wav',
+      'key_2e':  '/music/M300B/E4-2.wav',
+      'key_2f':  '/music/M300B/F4-2.wav',
+      'key_2fd': '/music/M300B/Fs4-2.wav',
+      'key2g':   '/music/M300B/G4-2.wav',
+      'key2gd':  '/music/M300B/Gs4-2.wav',
+      'key_2a':  '/music/M300B/A4-2.wav',
+      'key_2ad': '/music/M300B/As4-2.wav',
+      'key_2b':  '/music/M300B/B4-2.wav',
+      'key_3c':  '/music/M300B/C5-2.wav',
+      'key_3cd': '/music/M300B/Cs5-2.wav',
+      'key_3d':  '/music/M300B/D5-2.wav',
+      'key_3dd': '/music/M300B/Ds5-2.wav',
+      'key_3e':  '/music/M300B/E5-2.wav',
+    };
+
+
+
+  const keyBuffers = {};
+  const keyBuffers_A = {};
+  const keyBuffers_B = {};
+
+  // preload A sounds
+  Object.entries(keyAudioMap_A).forEach(([meshName, url]) => {
+
     audioLoader.load(url, (buffer) => {
-      keyBuffers[meshName] = buffer;
+
+      keyBuffers_A[meshName.toLowerCase()] = buffer;
+
     });
+
+  });
+
+  // preload B sounds
+  Object.entries(keyAudioMap_B).forEach(([meshName, url]) => {
+
+    audioLoader.load(url, (buffer) => {
+
+      keyBuffers_B[meshName.toLowerCase()] = buffer;
+
+    });
+
+  });
+
+  // preload C sounds
+  Object.entries(keyAudioMap).forEach(([meshName, url]) => {
+
+    audioLoader.load(url, (buffer) => {
+
+      keyBuffers[meshName.toLowerCase()] = buffer;
+
+    });
+
   });
 
   function playSelectedKeys() {
+    // choose the correct buffer map based on tape selection
+    let currentBuffers;
+
+    if (A_sound) {
+      currentBuffers = keyBuffers_A;
+
+    } else if (B_sound) {
+      currentBuffers = keyBuffers_B;
+
+    } else if (C_sound) {
+      currentBuffers = keyBuffers;
+    }
     selectedKeys.forEach(mesh => {
       const meshName = mesh.name.toLowerCase();
-      const buffer = keyBuffers[meshName];
+      
+      const buffer = currentBuffers[meshName];
+
       if (!buffer) {
         console.warn('No audio buffer for:', meshName);
         return;
@@ -1184,10 +1308,5 @@ export function initScene(onBack) {
 }
 
 
-/*
-TODO: 
-- aggiungi literature reviews (onedrive folder) al main menu
-SE C'È TEMPO:
-- fai selezione tapes
-*/
+
 

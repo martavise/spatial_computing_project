@@ -22,6 +22,14 @@ function renderLandingPage() {
           Learn about the instrument
         </button>
 
+        <button id="literatureBtn">
+          Literature Reviews
+        </button>
+
+        <button id="schaulagerBtn">
+          Visit the instrument at Fribourg
+        </button>
+
       </div>
 
     </div>
@@ -45,6 +53,28 @@ function renderLandingPage() {
 
       window.open(
         'https://en.wikipedia.org/wiki/Mellotron',
+        '_blank'
+      );
+    });
+
+  // ONEDRIVE FOLDER, LITERATURE REVIEW
+  document
+    .getElementById('literatureBtn')
+    .addEventListener('click', () => {
+
+      window.open(
+        'https://unifrch-my.sharepoint.com/:f:/g/personal/marta_visetti_unifr_ch/IgBBvKtI-kSHSIHPBN6sg7HiASuWCmrUobj9sz3U0EWmxDA?e=gFBaod',
+        '_blank'
+      );
+    });
+
+  // SMEM VISIT
+  document
+    .getElementById('schaulagerBtn')
+    .addEventListener('click', () => {
+
+      window.open(
+        'https://www.smemmusic.ch/en/schaulager',
         '_blank'
       );
     });
