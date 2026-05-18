@@ -181,12 +181,28 @@ export function initScene(onBack) {
       offset: { x: -200, y: 40 }
     },
     {
+      id: 'label-key-function',
+      getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('wooden004')),
+      text: 'Key functioning',
+      icon: '',
+      condition: () => !(lidMesh && lidMesh.visible),
+      offset: { x: -220, y: 80 }
+    },
+    {
+      id: 'label-belt',
+      getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('structure_belt')),
+      text: 'Belt function',
+      icon: '',
+      condition: () => !(lidMesh && lidMesh.visible),
+      offset: { x: +180, y: -40 }
+    },
+    {
       id: 'label-tapes',
       getMesh: () => selectableMeshes.find(m => m.name.toLowerCase().includes('structure004')),
       text: 'About magnetic tape',
       icon: '',
       condition: () => !(lidMesh && lidMesh.visible),
-      offset: { x: 130, y: 40 }
+      offset: { x: 130, y: -100 }
     },
 
   ];
@@ -395,6 +411,148 @@ export function initScene(onBack) {
     }
   });
 
+  // ------------------------------------------------
+  // KEY FUNCTIONING MODAL
+  // ------------------------------------------------
+  const keyModal = document.createElement('div');
+  keyModal.style.position = 'fixed';
+  keyModal.style.top = '0';
+  keyModal.style.left = '0';
+  keyModal.style.width = '100vw';
+  keyModal.style.height = '100vh';
+  keyModal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+  keyModal.style.display = 'none';
+  keyModal.style.alignItems = 'center';
+  keyModal.style.justifyContent = 'center';
+  keyModal.style.zIndex = '2000';
+
+  // container
+  const keyContainer = document.createElement('div');
+  keyContainer.style.display = 'flex';
+  keyContainer.style.gap = '20px';
+  keyContainer.style.background = '#fff';
+  keyContainer.style.padding = '20px';
+  keyContainer.style.borderRadius = '12px';
+  keyContainer.style.maxWidth = '90vw';
+  keyContainer.style.maxHeight = '80vh';
+  keyContainer.style.overflow = 'hidden';
+
+  // IMAGE SIDE
+  const keyImg = document.createElement('img');
+  keyImg.src = '/figures/key.png';
+  keyImg.style.width = '400px';
+  keyImg.style.height = 'auto';
+  keyImg.style.objectFit = 'contain';
+  keyImg.style.borderRadius = '8px';
+
+  // TEXT SIDE
+  const keyText = document.createElement('div');
+  keyText.style.width = '300px';
+  keyText.style.overflowY = 'auto';
+  keyText.style.fontFamily = 'Arial, sans-serif';
+  keyText.style.color = '#222';
+
+  keyText.innerHTML = `
+    <h2>Key functioning</h2>
+
+    <p>
+      The key has two main parts used for the tape to be read.
+    </p>
+
+    <p>
+      A first screw presses the tape to the reading area.
+    </p>
+
+    <p>
+      Afterwards, a pinch roller presses the tape towards the capstan,
+      allowing it to advance.
+    </p>
+  `;
+
+  // assemble
+  keyContainer.appendChild(keyImg);
+  keyContainer.appendChild(keyText);
+
+  keyModal.appendChild(keyContainer);
+
+  document.body.appendChild(keyModal);
+
+  // close when clicking outside
+  keyModal.addEventListener('click', (e) => {
+    if (e.target === keyModal) {
+      keyModal.style.display = 'none';
+    }
+  });
+
+  // ------------------------------------------------
+  // BELT MODAL
+  // ------------------------------------------------
+  const beltModal = document.createElement('div');
+  beltModal.style.position = 'fixed';
+  beltModal.style.top = '0';
+  beltModal.style.left = '0';
+  beltModal.style.width = '100vw';
+  beltModal.style.height = '100vh';
+  beltModal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+  beltModal.style.display = 'none';
+  beltModal.style.alignItems = 'center';
+  beltModal.style.justifyContent = 'center';
+  beltModal.style.zIndex = '2000';
+
+  // container
+  const beltContainer = document.createElement('div');
+  beltContainer.style.display = 'flex';
+  beltContainer.style.gap = '20px';
+  beltContainer.style.background = '#fff';
+  beltContainer.style.padding = '20px';
+  beltContainer.style.borderRadius = '12px';
+  beltContainer.style.maxWidth = '90vw';
+  beltContainer.style.maxHeight = '80vh';
+  beltContainer.style.overflow = 'hidden';
+
+  // IMAGE SIDE
+  const beltImg = document.createElement('img');
+  beltImg.src = '/figures/belt.png'; // or .webp depending on your file
+  beltImg.style.width = '400px';
+  beltImg.style.height = 'auto';
+  beltImg.style.objectFit = 'contain';
+  beltImg.style.borderRadius = '8px';
+
+  // TEXT SIDE
+  const beltText = document.createElement('div');
+  beltText.style.width = '300px';
+  beltText.style.overflowY = 'auto';
+  beltText.style.fontFamily = 'Arial, sans-serif';
+  beltText.style.color = '#222';
+
+  beltText.innerHTML = `
+    <h2>Belt function</h2>
+
+    <p>
+      A belt connect the structure to the motor.
+    </p>
+
+    <p>
+      This induces the rotation of the capstan (circled in blue) 
+      that goes across the entire keyboard;
+      it then allows for the selected tape to slide when its key is pressed.
+    </p>
+  `;
+
+  // assemble
+  beltContainer.appendChild(beltImg);
+  beltContainer.appendChild(beltText);
+
+  beltModal.appendChild(beltContainer);
+
+  document.body.appendChild(beltModal);
+
+  // close when clicking outside
+  beltModal.addEventListener('click', (e) => {
+    if (e.target === beltModal) {
+      beltModal.style.display = 'none';
+    }
+  });
 
 
   // ------------------------------------------------
@@ -501,7 +659,9 @@ export function initScene(onBack) {
       meshName.includes('volume') ||
       meshName.includes('pitch') ||
       meshName.includes('tape_select')||
-      meshName.includes('structure004')
+      meshName.includes('structure004')||
+      meshName.includes('wooden004')||
+      meshName.includes('structure_belt')
     );
   }
 
@@ -872,7 +1032,15 @@ export function initScene(onBack) {
 
       modal.style.display = 'flex';
       selectedObject.material.color.copy(selectedObject.userData.originalColor);
+    } else if (clickedName.includes('wooden004')) {
 
+      keyModal.style.display = 'flex';
+      selectedObject.material.color.copy(selectedObject.userData.originalColor);
+    
+    } else if (clickedName.includes('structure_belt')) {
+
+      beltModal.style.display = 'flex';
+      selectedObject.material.color.copy(selectedObject.userData.originalColor);
     } else if (clickedName.includes('power')) {
 
       powerModal.style.display = 'flex';
